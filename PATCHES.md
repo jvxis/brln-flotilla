@@ -31,7 +31,7 @@ Upstream candidate: no.
 
 ### 3. BRLN build configuration and CI
 
-`deploy/brln.env` is the configuration of `chat.br-ln.com`. `.github/workflows/ci.yml` runs lint, type check and the BRLN build, and fails if the build references a Coracle service.
+`deploy/brln.env` is the configuration of `chat.br-ln.com`. QR code login pairs over `wss://signer.br-ln.com`, a relay that only carries NIP-46 messages, because the members-only relay refuses the throwaway keys of devices that are still logging in. `.github/workflows/ci.yml` runs lint, type check and the BRLN build, and fails if the build references a Coracle service.
 
 ## Updating from upstream
 
