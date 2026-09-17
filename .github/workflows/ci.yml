@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-check-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: corepack enable && pnpm i --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Check
+        run: pnpm run check
+
+      - name: Build with the BRLN configuration
+        run: |
+          cp deploy/brln.env .env
+          NODE_OPTIONS=--max_old_space_size=8192 bash scripts/build-web.sh
+
+      - name: No third-party services in the build
+        run: |
+          if grep -rlE 'plausible\.coracle\.social|dufflepud\.coracle\.social' build; then
+            echo "build still references a Coracle service" >&2
+            exit 1
+          fi
+          echo "no Coracle service referenced"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build
+          retention-days: 7
