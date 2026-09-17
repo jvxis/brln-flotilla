@@ -6,6 +6,7 @@
      clay.css     — clay theme token values ([data-fl-theme="clay"] + dark)
      flat.css     — flat theme token values ([data-fl-theme="flat"] + dark)
      navy.css     — navy theme token values ([data-fl-theme="navy"] + dark)
+     brln.css     — BR⚡LN Club theme token values ([data-fl-theme="brln"] + dark)
 
    Every theme is selected the same way, by its own data-fl-theme value — there
    is no default, so VITE_THEME (→ FL_THEME, stamped on <body> + the app root)
@@ -17,6 +18,7 @@
 @import "./clay.css";
 @import "./flat.css";
 @import "./navy.css";
+@import "./brln.css";
 
 /* per-component styles (one file per component class family) */
 @import "./badge.css";
