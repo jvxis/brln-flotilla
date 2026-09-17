@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["web-v*"]
   pull_request:
   workflow_dispatch:
 
@@ -69,6 +70,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # A web-vX.Y.Z tag publishes the versioned image the LightningOS catalog pins.
+      - name: Tags
+        id: tags
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            echo "tags=${IMAGE}:${GITHUB_REF_NAME#web-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=${IMAGE}:sha-${GITHUB_SHA},${IMAGE}:main" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
         id: push
         uses: docker/build-push-action@v6
@@ -79,9 +90,7 @@ jobs:
           push: true
           provenance: false
           build-args: VITE_BUILD_HASH=${{ github.sha }}
-          tags: |
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
-            ${{ env.IMAGE }}:main
+          tags: ${{ steps.tags.outputs.tags }}
 
       - name: Boot with the broker restrictions
         run: |
