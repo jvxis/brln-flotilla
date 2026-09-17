@@ -46,3 +46,60 @@ jobs:
           name: web-build
           path: build
           retention-days: 7
+
+  web-image:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: lint-check-build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/jvxis/brln-community-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/web.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          build-args: VITE_BUILD_HASH=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:main
+
+      - name: Boot with the broker restrictions
+        run: |
+          docker run -d --name web \
+            --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            -p 127.0.0.1:8080:8080 \
+            "${IMAGE}@${{ steps.push.outputs.digest }}"
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8080/ >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:8080/ | grep -o '<title>[^<]*</title>'
+          echo "user: $(docker exec web id -u)"
+
+      - name: Summary
+        run: |
+          {
+            echo "### brln-community-web"
+            echo "\`${IMAGE}@${{ steps.push.outputs.digest }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
