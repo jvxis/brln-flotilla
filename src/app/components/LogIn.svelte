@@ -27,6 +27,7 @@
     ALLOW_LOCAL_KEYS,
     PLATFORM_NAME,
     POMADE_SIGNERS,
+    SIGNER_APP_CONFIGURED,
     SIGNER_APP_LABEL,
     SIGNER_APP_URL,
   } from "@app/env"
@@ -137,10 +138,22 @@
         Log in with Email
       </Button>
     {/if}
+    {#if SIGNER_APP_CONFIGURED && !hasSigner}
+      <Link external {disabled} href={SIGNER_APP_URL} class="button button-primary">
+        <Icon icon={Compass} />
+        {SIGNER_APP_LABEL}
+      </Link>
+      <p class="m-auto max-w-sm text-center text-sm">
+        Create or unlock your key there, make a pairing link, then come back and use Log in with
+        Remote Signer.
+      </p>
+    {/if}
     <Button
       onclick={loginWithBunker}
       {disabled}
-      class={cx(`button button-${hasSigner || hasPomade ? "neutral" : "primary"}`)}>
+      class={cx(
+        `button button-${hasSigner || hasPomade || (SIGNER_APP_CONFIGURED && !hasSigner) ? "neutral" : "primary"}`,
+      )}>
       <Icon icon={Cpu} />
       Log in with Remote Signer
     </Button>
@@ -156,7 +169,7 @@
         Log in with Key
       </Button>
     {/if}
-    {#if !hasSigner || !hasPomade}
+    {#if (!hasSigner || !hasPomade) && !(SIGNER_APP_CONFIGURED && !hasSigner)}
       <Link
         external
         {disabled}

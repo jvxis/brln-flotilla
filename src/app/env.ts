@@ -87,6 +87,9 @@ export const SIGNER_APP_URL = env("VITE_SIGNER_APP_URL") || "https://nostrapps.c
 
 export const SIGNER_APP_LABEL = env("VITE_SIGNER_APP_LABEL") || "Browse Signer Apps"
 
+// A deployment that ships its own signer recommends it instead of the directory.
+export const SIGNER_APP_CONFIGURED = Boolean(env("VITE_SIGNER_APP_URL"))
+
 // On the web, a key held by the app lives unencrypted in localStorage, so a deployment can require
 // an extension or remote signer instead. Native builds keep keys in secure storage.
 export const ALLOW_LOCAL_KEYS =
