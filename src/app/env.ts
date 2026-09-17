@@ -82,6 +82,11 @@ export const PLAUSIBLE_DOMAIN = env("VITE_PLAUSIBLE_DOMAIN")
 // Where people who aren't members of a platform relay are sent instead of an invite code form.
 export const PLATFORM_ACCESS_URL = env("VITE_PLATFORM_ACCESS_URL")
 
+// A deployment can point people at its own signer instead of the public directory.
+export const SIGNER_APP_URL = env("VITE_SIGNER_APP_URL") || "https://nostrapps.com#signers"
+
+export const SIGNER_APP_LABEL = env("VITE_SIGNER_APP_LABEL") || "Browse Signer Apps"
+
 // On the web, a key held by the app lives unencrypted in localStorage, so a deployment can require
 // an extension or remote signer instead. Native builds keep keys in secure storage.
 export const ALLOW_LOCAL_KEYS =

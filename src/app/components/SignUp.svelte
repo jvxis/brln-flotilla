@@ -29,6 +29,8 @@
     DEFAULT_RELAYS,
     DEFAULT_MESSAGING_RELAYS,
     DEFAULT_SPACES,
+    SIGNER_APP_LABEL,
+    SIGNER_APP_URL,
   } from "@app/env"
   import {setChecked} from "@app/notifications"
   import {loginWithPomade} from "@app/pomade"
@@ -133,10 +135,10 @@
       </p>
       <Link
         external
-        href="https://nostrapps.com#signers"
+        href={SIGNER_APP_URL}
         class={cx(`button button-${hasPomade ? "neutral" : "primary"}`)}>
         <Icon icon={Compass} />
-        Browse Signer Apps
+        {SIGNER_APP_LABEL}
       </Link>
     {/if}
     <div class="text-sm">

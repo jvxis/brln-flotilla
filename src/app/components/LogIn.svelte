@@ -23,7 +23,13 @@
   import LogInEmail from "@app/components/LogInEmail.svelte"
   import LogInKey from "@app/components/LogInKey.svelte"
   import {pushModal, clearModals} from "@app/modal"
-  import {ALLOW_LOCAL_KEYS, PLATFORM_NAME, POMADE_SIGNERS} from "@app/env"
+  import {
+    ALLOW_LOCAL_KEYS,
+    PLATFORM_NAME,
+    POMADE_SIGNERS,
+    SIGNER_APP_LABEL,
+    SIGNER_APP_URL,
+  } from "@app/env"
   import {pushToast} from "@app/toast"
   import {setChecked} from "@app/notifications"
   import {login} from "@app/core"
@@ -154,10 +160,10 @@
       <Link
         external
         {disabled}
-        href="https://nostrapps.com#signers"
+        href={SIGNER_APP_URL}
         class="button {hasSigner || hasPomade ? '' : 'button-neutral'}">
         <Icon icon={Compass} />
-        Browse Signer Apps
+        {SIGNER_APP_LABEL}
       </Link>
     {/if}
     <div class="text-sm">
