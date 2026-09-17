@@ -18,7 +18,7 @@ import {RelayJoin, RelayLeave, RoomJoin, RoomLeave} from "@welshman/domain"
 import {Sync, User, publish} from "@welshman/app"
 import {stripPrefix} from "@lib/util"
 import {app, command, relayManagement, roomLists, thunks, writer} from "@app/core"
-import {PLATFORM_URL} from "@app/env"
+import {PLATFORM_ACCESS_URL, PLATFORM_URL} from "@app/env"
 import {relaysMostlyRestricted} from "@app/policies"
 import {Push} from "@app/push"
 import {deriveSocket} from "@app/relays"
@@ -243,7 +243,9 @@ export const attemptRelayAccess = async (url: string, claim = "") => {
 
   // A space that isn't open to the public refuses a join carrying no claim at all
   if (error.includes("claim")) {
-    return "This space requires an invite code"
+    return PLATFORM_ACCESS_URL
+      ? "This space is for members only"
+      : "This space requires an invite code"
   }
 
   return stripPrefix(error)

@@ -23,7 +23,7 @@
   import LogInEmail from "@app/components/LogInEmail.svelte"
   import LogInKey from "@app/components/LogInKey.svelte"
   import {pushModal, clearModals} from "@app/modal"
-  import {PLATFORM_NAME, POMADE_SIGNERS} from "@app/env"
+  import {ALLOW_LOCAL_KEYS, PLATFORM_NAME, POMADE_SIGNERS} from "@app/env"
   import {pushToast} from "@app/toast"
   import {setChecked} from "@app/notifications"
   import {login} from "@app/core"
@@ -144,7 +144,7 @@
         Log in with Email
       </Button>
     {/if}
-    {#if !hasSigner}
+    {#if !hasSigner && ALLOW_LOCAL_KEYS}
       <Button {disabled} onclick={loginWithKey} class="button button-neutral">
         <Icon icon={Key} />
         Log in with Key

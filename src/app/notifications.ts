@@ -103,7 +103,7 @@ let nip98Auth: SignedEvent | undefined
 const nip98Header = async () => {
   const $signer = app.get().user?.signer
 
-  if (!$signer) {
+  if (!$signer || !DUFFLEPUD_URL) {
     return undefined
   }
 

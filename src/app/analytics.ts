@@ -1,6 +1,7 @@
 /* eslint prefer-rest-params: 0 */
 
 import {page} from "$app/stores"
+import {PLAUSIBLE_DOMAIN, PLAUSIBLE_URL} from "@app/env"
 import {getSetting} from "@app/settings"
 
 const w = window as any
@@ -13,6 +14,17 @@ w.plausible =
 
 // Modals live in page state, so the page store also emits when one opens or closes
 export const setupAnalytics = () => {
+  if (!PLAUSIBLE_URL || !PLAUSIBLE_DOMAIN) {
+    return () => {}
+  }
+
+  const script = document.createElement("script")
+
+  script.defer = true
+  script.dataset.domain = PLAUSIBLE_DOMAIN
+  script.src = `${PLAUSIBLE_URL}/js/script.manual.js`
+  document.body.appendChild(script)
+
   let prevHref: string | undefined
 
   return page.subscribe($page => {

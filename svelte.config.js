@@ -2,6 +2,7 @@ import adapter from "@sveltejs/adapter-static"
 import {vitePreprocess} from "@sveltejs/vite-plugin-svelte"
 import {createHash} from "node:crypto"
 import {readFileSync} from "node:fs"
+import "dotenv/config"
 
 // Sveltekit hashes the scripts it injects itself, but not the ones app.html carries, so those
 // have to be named in script-src by hand. Hashing them here rather than pasting a literal is
@@ -30,7 +31,12 @@ export default {
     },
     csp: {
       directives: {
-        "script-src": ["self", "wasm-unsafe-eval", "https://plausible.coracle.social", ...appHtmlScripts],
+        "script-src": [
+          "self",
+          "wasm-unsafe-eval",
+          ...(process.env.VITE_PLAUSIBLE_URL ? [process.env.VITE_PLAUSIBLE_URL] : []),
+          ...appHtmlScripts,
+        ],
         "worker-src": ["self", "blob:"],
         "style-src": ["self", "unsafe-inline"],
         "frame-src": ["none"],

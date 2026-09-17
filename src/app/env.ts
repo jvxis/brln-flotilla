@@ -14,7 +14,7 @@ const env = (key: string): string =>
 
 export const PUSH_SERVER = env("VITE_PUSH_SERVER")
 
-export const PUSH_BRIDGE = normalizeRelayUrl(env("VITE_PUSH_BRIDGE"))
+export const PUSH_BRIDGE = env("VITE_PUSH_BRIDGE") ? normalizeRelayUrl(env("VITE_PUSH_BRIDGE")) : ""
 
 export const ENABLE_ZAPS = Capacitor.getPlatform() != "ios"
 
@@ -71,7 +71,21 @@ export const HOSTING_BACKEND_URL = env("VITE_HOSTING_BACKEND_URL")
 
 export const HOSTING_RELAY_DOMAIN = env("VITE_HOSTING_RELAY_DOMAIN")
 
-export const DUFFLEPUD_URL = "https://dufflepud.coracle.social"
+// Empty turns off link previews and remote sync of read state; handles and zappers are then
+// resolved directly by the client.
+export const DUFFLEPUD_URL = env("VITE_DUFFLEPUD_URL")
+
+export const PLAUSIBLE_URL = env("VITE_PLAUSIBLE_URL")
+
+export const PLAUSIBLE_DOMAIN = env("VITE_PLAUSIBLE_DOMAIN")
+
+// Where people who aren't members of a platform relay are sent instead of an invite code form.
+export const PLATFORM_ACCESS_URL = env("VITE_PLATFORM_ACCESS_URL")
+
+// On the web, a key held by the app lives unencrypted in localStorage, so a deployment can require
+// an extension or remote signer instead. Native builds keep keys in secure storage.
+export const ALLOW_LOCAL_KEYS =
+  Capacitor.getPlatform() !== "web" || env("VITE_ALLOW_LOCAL_KEYS") !== "false"
 
 export const THUMBNAIL_URL = env("VITE_THUMBNAIL_URL")
 

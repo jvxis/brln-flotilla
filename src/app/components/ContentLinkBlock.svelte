@@ -1,9 +1,13 @@
 <script module lang="ts">
   import {postJson, simpleCache} from "@welshman/lib"
-  import {dufflepud} from "@app/env"
+  import {dufflepud, DUFFLEPUD_URL} from "@app/env"
 
   // Cache previews by url so the same link isn't re-fetched across renders/instances.
   const loadPreview = simpleCache(async ([url]: [string]) => {
+    if (!DUFFLEPUD_URL) {
+      throw new Error("Link previews are disabled")
+    }
+
     const json = await postJson(dufflepud("link/preview"), {url})
 
     if (!json?.title && !json?.image) {

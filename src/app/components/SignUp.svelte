@@ -6,9 +6,11 @@
   import {Thunks, nip01, publish, toSession} from "@welshman/app"
   import Key from "@assets/icons/key-minimalistic.svg?dataurl"
   import Letter from "@assets/icons/letter.svg?dataurl"
+  import Compass from "@assets/icons/compass-big.svg?dataurl"
   import {getKey, setKey} from "@lib/implicit"
   import Icon from "@lib/components/Icon.svelte"
   import Button from "@lib/components/Button.svelte"
+  import Link from "@lib/components/Link.svelte"
   import Modal from "@lib/components/Modal.svelte"
   import ModalBody from "@lib/components/ModalBody.svelte"
   import ModalTitle from "@lib/components/ModalTitle.svelte"
@@ -20,6 +22,7 @@
   import SignUpComplete from "@app/components/SignUpComplete.svelte"
   import {attemptRelayAccess} from "@app/access"
   import {
+    ALLOW_LOCAL_KEYS,
     POMADE_SIGNERS,
     PLATFORM_NAME,
     INDEXER_RELAYS,
@@ -116,12 +119,26 @@
         Sign up with email
       </Button>
     {/if}
-    <Button
-      onclick={flows.nostr.start}
-      class={cx(`button button-${hasPomade ? "neutral" : "primary"}`)}>
-      <Icon icon={Key} />
-      Generate a key
-    </Button>
+    {#if ALLOW_LOCAL_KEYS}
+      <Button
+        onclick={flows.nostr.start}
+        class={cx(`button button-${hasPomade ? "neutral" : "primary"}`)}>
+        <Icon icon={Key} />
+        Generate a key
+      </Button>
+    {:else}
+      <p class="m-auto max-w-sm text-center text-sm">
+        {PLATFORM_NAME} doesn't keep keys in the browser. Create one with a signer app, then log in with
+        it.
+      </p>
+      <Link
+        external
+        href="https://nostrapps.com#signers"
+        class={cx(`button button-${hasPomade ? "neutral" : "primary"}`)}>
+        <Icon icon={Compass} />
+        Browse Signer Apps
+      </Link>
+    {/if}
     <div class="text-sm">
       Already have an account?
       <Button class="link" onclick={showLogIn}>Log in instead</Button>
