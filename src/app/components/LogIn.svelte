@@ -8,6 +8,7 @@
   import Widget from "@assets/icons/widget-4.svg?dataurl"
   import Letter from "@assets/icons/letter.svg?dataurl"
   import Cpu from "@assets/icons/cpu-bolt.svg?dataurl"
+  import QrCode from "@assets/icons/qr-code.svg?dataurl"
   import Compass from "@assets/icons/compass-big.svg?dataurl"
   import Key from "@assets/icons/key.svg?dataurl"
   import Icon from "@lib/components/Icon.svelte"
@@ -93,6 +94,8 @@
 
   const loginWithBunker = () => pushModal(LogInBunker)
 
+  const loginWithQrCode = () => pushModal(LogInBunker, {initialMode: "connect"})
+
   const loginWithKey = () => pushModal(LogInKey)
 
   const hasSigner = $derived(getNip07() || signers.length > 0)
@@ -156,6 +159,10 @@
       )}>
       <Icon icon={Cpu} />
       Log in with Remote Signer
+    </Button>
+    <Button onclick={loginWithQrCode} {disabled} class="button button-neutral">
+      <Icon icon={QrCode} />
+      Log in with a QR code
     </Button>
     {#if hasPomade && hasSigner}
       <Button {disabled} onclick={loginWithEmail} class="button button-neutral">

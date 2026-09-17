@@ -27,6 +27,12 @@
   import {pushToast} from "@app/toast"
   import {NIP46_PERMS} from "@app/nip46"
 
+  // The login screen can open this straight in QR mode, so someone logging in
+  // again does not have to go through the bunker link form first.
+  type Props = {initialMode?: "bunker" | "connect"}
+
+  const {initialMode = "bunker"}: Props = $props()
+
   const back = () => {
     if (mode === "connect") {
       selectBunker()
@@ -124,7 +130,7 @@
 
   const isIos = Capacitor.getPlatform() === "ios"
 
-  let mode: string = $state("bunker")
+  let mode: string = $state(initialMode)
 
   $effect(() => {
     // For testing and for play store reviewers
