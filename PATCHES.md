@@ -76,6 +76,16 @@ The chat keeps its cache in IndexedDB, and `+layout.svelte` awaits `storage.read
 
 Upstream candidate: both, yes.
 
+### 8. Authenticate on the space's own relay from the first connection
+
+`src/app/policies.ts`.
+
+`authPolicy` decides whether to answer a relay's NIP-42 challenge, and every rule it had waits on a list — room list, relay list, a publish already sent — that is itself read from the relay or from the local cache. On the club's closed relay that is a circle: nothing is served before authentication, so on a first load, or in a browser that keeps no cache, the client never authenticated, the room came back empty and the person saw only the messages they sent. The messages appeared after leaving the room and coming back, because publishing had forced the authentication by then and the new subscription ran with it.
+
+A relay in `PLATFORM_RELAYS` is the one this build exists for, so it authenticates as soon as there is an identity.
+
+Upstream candidate: yes, for any deployment with a closed platform relay.
+
 ## Updating from upstream
 
 ```sh
