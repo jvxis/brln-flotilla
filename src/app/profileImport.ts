@@ -1,6 +1,7 @@
 import {noop, sleep} from "@welshman/lib"
 import {PROFILE} from "@welshman/util"
-import {Sync, User} from "@welshman/app"
+import type {Filter} from "@welshman/util"
+import {Network, User} from "@welshman/app"
 import type {AppPolicy, IApp} from "@welshman/app"
 import {appPolicies, thunks} from "@app/core"
 import {PLATFORM_RELAYS, PROFILE_IMPORT_RELAYS} from "@app/env"
@@ -12,12 +13,20 @@ import {PLATFORM_RELAYS, PROFILE_IMPORT_RELAYS} from "@app/env"
 // Only their own pubkey is ever asked about, and only when the space has no profile
 // for them: the other members' npubs never leave the club's relay, which is the whole
 // point of a closed space.
+
 // A relay that never answers must not hold the whole thing up: the club's relay
 // refuses everything to someone it has not admitted yet, and a public one can simply
 // be slow. Whatever arrived by then is what gets used.
-const PULL_TIMEOUT = 5000
+const REQUEST_TIMEOUT = 5000
 
-const pullWithin = (promise: Promise<void>) => Promise.race([promise, sleep(PULL_TIMEOUT)])
+// A plain REQ, not a negentropy sync. purplepag.es announces NIP-77 in its NIP-11 and
+// then answers NEG-OPEN with "failed to parse envelope: unknown envelope label", so a
+// reconciliation there fetches nothing at all, quietly. Every relay serves a REQ.
+const askFor = ($app: IApp, relays: string[], filters: Filter[]) =>
+  Promise.race([
+    $app.use(Network).request({relays, filters, autoClose: true}),
+    sleep(REQUEST_TIMEOUT),
+  ])
 
 const importOwnProfile = async ($app: IApp) => {
   if (PROFILE_IMPORT_RELAYS.length === 0 || PLATFORM_RELAYS.length === 0) return
@@ -26,11 +35,11 @@ const importOwnProfile = async ($app: IApp) => {
   const filters = [{kinds: [PROFILE], authors: [pubkey]}]
   const known = () => $app.repository.query(filters)[0]
 
-  await pullWithin($app.use(Sync).pull({relays: PLATFORM_RELAYS, filters}))
+  await askFor($app, PLATFORM_RELAYS, filters)
 
   if (known()) return
 
-  await pullWithin($app.use(Sync).pull({relays: PROFILE_IMPORT_RELAYS, filters}))
+  await askFor($app, PROFILE_IMPORT_RELAYS, filters)
 
   const profile = known()
 

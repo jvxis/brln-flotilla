@@ -13,6 +13,7 @@
   import DictationButton from "@app/components/DictationButton.svelte"
   import EditorContent from "@app/editor/EditorContent.svelte"
   import {makeEditor} from "@app/editor"
+  import {hasUploadServer} from "@app/uploads"
   import {getDictation} from "@app/dictation"
   import {type DraftKey, type Draft} from "@app/drafts"
   import {pushToast} from "@app/toast"
@@ -64,6 +65,9 @@
   }
 
   const uploadFiles = () => editor.then(ed => ed.chain().selectFiles().run())
+
+  // Nowhere to keep files means the button can only fail, so it is not offered.
+  const uploadsAvailable = hasUploadServer()
 
   // Tiptap parses a string handed to insertContent as html, so an angle bracket in the
   // transcript would eat the rest of the sentence.
@@ -149,17 +153,19 @@
 </script>
 
 <form class="relative z-feature flex gap-2 p-2" onsubmit={preventDefault(submit)}>
-  <Button
-    data-tip="Add an image"
-    class="button button-neutral button-square tip tip-right h-10 w-10 min-w-10 rounded-2xl transition-colors"
-    disabled={$uploading || disabled}
-    onclick={uploadFiles}>
-    {#if $uploading}
-      <Spinner size="xs" />
-    {:else}
-      <Icon icon={GallerySend} />
-    {/if}
-  </Button>
+  {#if uploadsAvailable}
+    <Button
+      data-tip="Add an image"
+      class="button button-neutral button-square tip tip-right h-10 w-10 min-w-10 rounded-2xl transition-colors"
+      disabled={$uploading || disabled}
+      onclick={uploadFiles}>
+      {#if $uploading}
+        <Spinner size="xs" />
+      {:else}
+        <Icon icon={GallerySend} />
+      {/if}
+    </Button>
+  {/if}
   <div class={editorClass} aria-disabled={disabled}>
     <EditorContent {autofocus} {editor} />
   </div>

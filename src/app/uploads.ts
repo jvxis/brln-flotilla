@@ -41,6 +41,16 @@ export type GetBlossomServerOptions = {
   url?: string
 }
 
+// Sending files needs somewhere to put them. This deployment configures no blossom
+// server and the club's relay hosts none, so the list is empty — and the upload used
+// to run with `undefined` as the server, which surfaced as "Failed to construct
+// 'URL'" when someone attached or pasted an image.
+export const hasUploadServer = () =>
+  DEFAULT_BLOSSOM_SERVERS.length > 0 ||
+  (app.get().user?.pubkey
+    ? blossomServerLists.get().urls(app.get().user!.pubkey).get().length > 0
+    : false)
+
 export const getBlossomServer = async (options: GetBlossomServerOptions = {}) => {
   if (options.url) {
     if (await hasBlossomSupport(options.url)) {
@@ -58,7 +68,7 @@ export const getBlossomServer = async (options: GetBlossomServerOptions = {}) =>
     }
   }
 
-  return first(DEFAULT_BLOSSOM_SERVERS)!
+  return first(DEFAULT_BLOSSOM_SERVERS)
 }
 
 export type CompressFileOptions = {
@@ -136,6 +146,11 @@ export const uploadFile = async (file: File, options: UploadFileOptions = {}) =>
     const [, subtype = ""] = type.split("/")
     const ext = /^[a-z0-9]+$/.test(subtype) ? "." + subtype : ""
     const server = await getBlossomServer(options)
+
+    if (!server) {
+      return {error: "This space has nowhere to keep files yet, so images can't be sent here."}
+    }
+
     const hashes = [await sha256(await file.arrayBuffer())]
     const $signer = app.get().user?.signer || Nip01Signer.ephemeral()
     const authTemplate = makeBlossomAuthEvent({action: "upload", server, hashes})

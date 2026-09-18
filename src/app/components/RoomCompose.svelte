@@ -17,6 +17,7 @@
   import CommandArgBar from "@app/components/CommandArgBar.svelte"
   import EditorContent from "@app/editor/EditorContent.svelte"
   import {makeEditor} from "@app/editor"
+  import {hasUploadServer} from "@app/uploads"
   import {app} from "@app/core"
   import {getDictation} from "@app/dictation"
   import {DraftKey, type Draft} from "@app/drafts"
@@ -67,6 +68,9 @@
   }
 
   const uploadFiles = () => editor.then(ed => ed.chain().selectFiles().run())
+
+  // Nowhere to keep files means the button can only fail, so it is not offered.
+  const uploadsAvailable = hasUploadServer()
 
   // Tiptap parses a string handed to insertContent as html, so an angle bracket in the
   // transcript would eat the rest of the sentence.
@@ -164,16 +168,18 @@
 <CommandArgBar target={commandTarget} content={$text} insert={insertCommandToken} />
 <form class="relative flex gap-2 py-2" onsubmit={preventDefault(submit)}>
   <div class="join">
-    <Button
-      class="join-item h-10 w-10 min-w-10 button button-neutral"
-      disabled={$uploading}
-      onclick={uploadFiles}>
-      {#if $uploading}
-        <Spinner size="xs" />
-      {:else}
-        <Icon icon={GallerySend} />
-      {/if}
-    </Button>
+    {#if uploadsAvailable}
+      <Button
+        class="join-item h-10 w-10 min-w-10 button button-neutral"
+        disabled={$uploading}
+        onclick={uploadFiles}>
+        {#if $uploading}
+          <Spinner size="xs" />
+        {:else}
+          <Icon icon={GallerySend} />
+        {/if}
+      </Button>
+    {/if}
     <Button
       disabled={$uploading}
       onclick={showPopover}

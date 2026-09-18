@@ -98,6 +98,16 @@ Doing that here would hand an outside relay the npubs of everyone in a closed sp
 
 Upstream candidate: yes, for any closed deployment.
 
+### 10. Sending files fails clearly instead of obscurely
+
+`src/app/uploads.ts`, `src/app/components/ChatCompose.svelte`, `src/app/components/RoomCompose.svelte`.
+
+Attachments are out of the MVP, so `VITE_DEFAULT_BLOSSOM_SERVERS` is empty and the club's relay hosts no blossom. `getBlossomServer` still ended in `first(DEFAULT_BLOSSOM_SERVERS)!`, so the upload ran with `undefined` as the server and every attempt — the button, a pasted image — died on "Failed to construct 'URL': Invalid base URL".
+
+Now the button is not offered when there is nowhere to keep files, and an upload that reaches the code anyway says so in words.
+
+Upstream candidate: yes, the non-null assertion is a bug anywhere the list can be empty.
+
 ## Updating from upstream
 
 ```sh
