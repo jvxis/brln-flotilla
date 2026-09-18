@@ -205,12 +205,12 @@ const formatAuthError = (status: AuthStatus, details?: string) => {
 }
 
 // The socket authenticated before the relay admitted this pubkey, so it stays
-// restricted on its current connection. Reconnecting applies the new membership
-// right away; without it the client sits on "Authenticating" until the person
-// reloads the page.
+// restricted on its current connection, and its refused subscriptions are gone.
+// Closing is enough: the socket reopens on its own and authenticates as a member.
+// Opening it here as well would race with that and leave a second, unauthenticated
+// connection behind, which is what the status indicator ends up reading.
 const reconnectAfterJoin = (socket: Socket) => {
   socket.close()
-  socket.attemptToOpen()
 }
 
 export const attemptRelayAccess = async (url: string, claim = "") => {
