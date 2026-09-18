@@ -42,6 +42,8 @@ On a members-only relay everything the client learns before being admitted is le
 
 Leaving has the mirror problem: it rewrites the room list on the space's own relay, which someone already removed from it cannot write to, so the space kept coming back and the join and leave buttons alternated forever. The departure is remembered in `localStorage` and cleared on the next join.
 
+The reload is load-bearing, not leftover. Welshman treats a `restricted:` refusal as final (`isTerminalReason`): the request is finished, `resubscribeAttempts` defaults to zero, and reopening the socket does not revive it, because the request object is already closed. So everything the client tried to subscribe to before being admitted is gone for good, and only re-creating those subscriptions brings the room back — which is what the reload does bluntly. Removing it would put the empty room back in front of every new member. Replacing it means re-running the app's subscriptions after a join, plus a test with a member joining for the first time.
+
 Upstream candidate: the socket close and the local departure, yes. The reload is a stopgap for this deployment until the stores recover on their own.
 
 ### 5. No invite links in a members-only space
