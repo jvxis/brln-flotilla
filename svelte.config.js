@@ -50,8 +50,8 @@ export default {
     },
   },
   compilerOptions: {
-    warningFilter: (warning) => {
-      return !['a11y_media_has_caption', 'state_referenced_locally'].includes(warning.code)
+    warningFilter: warning => {
+      return !["a11y_media_has_caption", "state_referenced_locally"].includes(warning.code)
     },
-  }
+  },
 }

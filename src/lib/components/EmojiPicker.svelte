@@ -25,7 +25,9 @@
   // an extension in the way. All the picker says then is "Could not load emoji.",
   // and the person cannot react at all — so a short list takes over.
   const fallbackEmoji =
-    "👍 👎 ❤️ 🔥 ⚡ 🚀 🎉 👏 🙏 😂 😅 🤔 😮 😢 😡 🤝 💡 ✅ ❌ 👀 🧡 💜 🤙 🫡 🐂 🐻 🌽 💰 🔒 🛠️".split(" ")
+    "👍 👎 ❤️ 🔥 ⚡ 🚀 🎉 👏 🙏 😂 😅 🤔 😮 😢 😡 🤝 💡 ✅ ❌ 👀 🧡 💜 🤙 🫡 🐂 🐻 🌽 💰 🔒 🛠️".split(
+      " ",
+    )
 
   type PickerElement = Element & {database?: {ready: () => Promise<void>}}
 
@@ -51,7 +53,10 @@
     databaseOf(picker)
       .then(database => database.ready())
       .catch((error: any) => {
-        console.info("Emoji list unavailable, falling back to a short one:", error?.message || error)
+        console.info(
+          "Emoji list unavailable, falling back to a short one:",
+          error?.message || error,
+        )
         unavailable = true
       })
   })
