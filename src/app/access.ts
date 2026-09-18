@@ -360,6 +360,15 @@ export class Access {
           },
         ],
       })
+
+    // Everything the client learned about this relay was learned as an outsider:
+    // refused subscriptions, an empty room list and a connection status that never
+    // reaches "connected". Reloading rebuilds that from scratch as a member, which
+    // is what people were doing by hand. The wait lets the publishes above land.
+    if (typeof window !== "undefined") {
+      await sleep(2000)
+      window.location.reload()
+    }
   }
 
   async joinSpace({
