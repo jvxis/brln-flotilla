@@ -2,7 +2,6 @@
   import {derived} from "svelte/store"
   import {removeUndefined, sortBy} from "@welshman/lib"
   import UsersGroup from "@assets/icons/users-group-rounded.svg?dataurl"
-  import AddCircle from "@assets/icons/add-circle.svg?dataurl"
   import MenuDots from "@assets/icons/menu-dots.svg?dataurl"
   import MinusCircle from "@assets/icons/minus-circle.svg?dataurl"
   import Magnifier from "@assets/icons/magnifier.svg?dataurl"
@@ -13,7 +12,6 @@
   import PageContent from "@lib/components/PageContent.svelte"
   import SpaceBar from "@app/components/SpaceBar.svelte"
   import SpaceMember from "@app/components/SpaceMember.svelte"
-  import SpaceInvite from "@app/components/SpaceInvite.svelte"
   import SpaceRoles from "@app/components/SpaceRoles.svelte"
   import SpaceMembersBanned from "@app/components/SpaceMembersBanned.svelte"
   import {deriveUserIsSpaceAdmin} from "@app/management"
@@ -46,11 +44,6 @@
   })
 
   let menuOpen = $state(false)
-
-  const inviteMembers = () => {
-    menuOpen = false
-    pushModal(SpaceInvite, {url})
-  }
 
   const manageRoles = () => {
     menuOpen = false
@@ -100,10 +93,6 @@
     <strong>Members</strong>
   {/snippet}
   {#snippet action()}
-    <Button class="button button-primary button-sm" onclick={inviteMembers}>
-      <Icon icon={AddCircle} />
-      Invite people
-    </Button>
     {#if $userIsAdmin}
       <div class="relative">
         <Button

@@ -2,7 +2,6 @@
   import cx from "classnames"
   import Danger from "@assets/icons/danger.svg?dataurl"
   import ServerPath from "@assets/icons/server-path.svg?dataurl"
-  import LinkRound from "@assets/icons/link-round.svg?dataurl"
   import Pen from "@assets/icons/pen.svg?dataurl"
   import Exit from "@assets/icons/logout-3.svg?dataurl"
   import Letter from "@assets/icons/letter.svg?dataurl"
@@ -12,7 +11,6 @@
   import Icon from "@lib/components/Icon.svelte"
   import Link from "@lib/components/Link.svelte"
   import Button from "@lib/components/Button.svelte"
-  import SpaceInvite from "@app/components/SpaceInvite.svelte"
   import SpaceExit from "@app/components/SpaceExit.svelte"
   import SpaceEdit from "@app/components/SpaceEdit.svelte"
   import SpaceJoin from "@app/components/SpaceJoin.svelte"
@@ -37,8 +35,6 @@
   const hostedRelay = deriveHostedRelay(url)
   const actionItems = deriveSpaceActionItems(url)
   const shouldNotify = deriveShouldNotify(url)
-
-  const createInvite = () => pushModal(SpaceInvite, {url}, {replaceState: true})
 
   const startEdit = () =>
     pushModal(SpaceEdit, {url, initialValues: $relay || {url}}, {replaceState: true})
@@ -75,7 +71,6 @@
   </Button>
 {/snippet}
 
-{@render actionButton(createInvite, LinkRound, "Create Invite")}
 {#if $userIsAdmin}
   <Button class="button button-neutral w-full justify-start" onclick={showActionItems}>
     <Icon size={4} icon={Danger} />

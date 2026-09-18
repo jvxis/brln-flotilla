@@ -44,6 +44,16 @@ Leaving has the mirror problem: it rewrites the room list on the space's own rel
 
 Upstream candidate: the socket close and the local departure, yes. The reload is a stopgap for this deployment until the stores recover on their own.
 
+### 5. No invite links in a members-only space
+
+`src/app/components/SpaceMenuActions.svelte`, `SpaceMenuActionsMobile.svelte` and `src/routes/spaces/[relay]/directory/+page.svelte` — the *Create Invite* menu entry and the *Invite people* button are gone.
+
+Membership of this space follows the club subscription: the member registers a `npub` on the website and a synchronizer keeps the relay's list. An invite link would be a second, parallel way in — and in Zooid a valid claim admits a stranger even when `public_join = false` (`ValidateJoinRequest`). The relay already refuses `createclaim` from a member, because `member_methods` is unset, so the buttons only offered something that could not work; removing them keeps the club's answer in one place.
+
+Room invites in `RoomDetail.svelte` stay, because they are already behind `userIsAdmin`.
+
+Upstream candidate: no. It is a decision of this deployment, not a defect.
+
 ## Updating from upstream
 
 ```sh
