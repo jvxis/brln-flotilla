@@ -28,24 +28,33 @@
         clearBadges()
       }
 
-      let permission = "granted"
+      let refused = ""
 
       if (settings.push) {
-        permission = await Push.request()
+        const permission = await Push.request()
 
         if (!permission.startsWith("granted")) {
           await sleep(300)
 
+          // The browser said no, or said nothing at all. Everything else on this
+          // page is still the person's decision and used to be thrown away along
+          // with the refusal, which read as the page ignoring them.
           settings.push = false
-
-          return pushToast({
-            theme: "error",
-            message: `Failed to request notification permissions (${permission}).`,
-          })
+          refused = permission
         }
       }
 
       notificationSettings.set(settings)
+
+      if (refused) {
+        return pushToast({
+          theme: "error",
+          message:
+            refused === "default"
+              ? "Your browser did not answer the request for notifications, so they stay off. The rest was saved. Allow notifications for this site and try again."
+              : `Your browser refused notifications (${refused}), so they stay off. The rest was saved.`,
+        })
+      }
 
       pushToast({message: "Your settings have been saved!"})
     } finally {

@@ -108,6 +108,16 @@ Now the button is not offered when there is nowhere to keep files, and an upload
 
 Upstream candidate: yes, the non-null assertion is a bug anywhere the list can be empty.
 
+### 11. A refused notification does not throw away the rest of the settings
+
+`src/routes/settings/alerts/+page.svelte`.
+
+Saving the alert settings asked the browser for notification permission and, when the answer was not "granted", returned before `notificationSettings.set` — so the badge, the sound and the alert types the person had just changed were discarded along with the refusal. All they saw was an error and their other choices reverting.
+
+The settings are saved either way, with push forced off, and the message says what happened: a browser that never answers gets a different sentence from one that refuses.
+
+Upstream candidate: yes.
+
 ## Updating from upstream
 
 ```sh
