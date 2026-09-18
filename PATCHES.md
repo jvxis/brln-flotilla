@@ -66,6 +66,16 @@ The app is served from a node with a self-signed certificate, and a browser refu
 
 Upstream candidate: both, yes.
 
+### 7. Work in a browser that blocks site data, and hide what the club does not run
+
+`src/app/storage.ts`, `src/app/hosting.ts`, `src/routes/settings/hosting/+page.svelte`.
+
+The chat keeps its cache in IndexedDB, and `+layout.svelte` awaits `storage.ready` before it subscribes to anything. Where the browser refuses IndexedDB — site data blocked for the origin, by a setting or an extension — that promise rejected and the rest of the startup never ran: the person could send messages and saw only their own. The failure is now caught, the person is told plainly, and the chat runs without a cache.
+
+`VITE_HOSTING_BACKEND_URL` is empty here, because the club sells no hosting, but `HOSTING_ENABLED` only checked for iOS. The Hosting settings page built its requests on an empty base URL and could only say "Failed to construct 'URL': Invalid base URL". Hosting is now off whenever there is no backend address, and the page itself redirects.
+
+Upstream candidate: both, yes.
+
 ## Updating from upstream
 
 ```sh

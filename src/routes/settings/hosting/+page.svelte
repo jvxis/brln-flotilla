@@ -1,5 +1,6 @@
 <script lang="ts">
   import {onMount} from "svelte"
+  import {goto} from "$app/navigation"
   import {App} from "@capacitor/app"
   import type {Maybe} from "@welshman/lib"
   import {indexBy, sortBy, spec} from "@welshman/lib"
@@ -33,6 +34,7 @@
     listTenantInvoices,
     listTenantRelays,
     derivePlans,
+    HOSTING_ENABLED,
     reconcileTenant,
     selectPayableInvoice,
     type HostedRelay,
@@ -173,6 +175,13 @@
   }
 
   onMount(() => {
+    // Nothing links here when there is no hosting backend, but a bookmark still
+    // might, and every call on this page would fail to build its URL.
+    if (!HOSTING_ENABLED) {
+      void goto("/settings")
+      return
+    }
+
     reconcile().finally(() => (loading = false))
 
     // Re-run on foreground return (native browser round-trip) to pick up a

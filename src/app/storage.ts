@@ -49,6 +49,7 @@ import {Handles, Plaintext, Relays, RelayStats, User, Zappers} from "@welshman/a
 import type {AppPolicy, IApp, RelayStatsItem} from "@welshman/app"
 import {IDB} from "@lib/indexeddb"
 import {appPolicies} from "@app/core"
+import {pushToast} from "@app/toast"
 import {DM_KINDS} from "@app/content"
 
 export const kv = call(() => {
@@ -217,7 +218,22 @@ class Storage {
   }
 
   private start = async () => {
-    await this.db.connect()
+    try {
+      await this.db.connect()
+    } catch (error) {
+      // A browser refuses IndexedDB when site data is blocked for the origin, by a
+      // setting or by an extension. The cache is then impossible, but the chat has to
+      // keep working: the layout awaits this promise before it subscribes to anything,
+      // so rejecting here left the person seeing only the messages they sent.
+      console.warn("No local cache; this browser is blocking site data:", error)
+      pushToast({
+        theme: "error",
+        message:
+          "Your browser is blocking site data for this page, so nothing is kept between reloads. The chat still works.",
+      })
+      this.stopped = true
+      return
+    }
 
     const [, unsubscribeRelays] = await Promise.all([this.loadCriticalData(), this.initRelays()])
 

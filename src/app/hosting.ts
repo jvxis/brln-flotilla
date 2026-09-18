@@ -8,8 +8,11 @@ import {user} from "@app/core"
 import {HOSTING_BACKEND_URL, PLATFORM_URL} from "@app/env"
 
 // Apple doesn't allow selling hosting outside their payment system, so on iOS we
-// point people at the platform's website instead.
-export const HOSTING_ENABLED = Capacitor.getPlatform() !== "ios"
+// point people at the platform's website instead. The club sells no hosting at all
+// and leaves the backend address empty: with it, every request here builds a URL on
+// an empty base, and the settings page only ever showed "Failed to construct 'URL':
+// Invalid base URL".
+export const HOSTING_ENABLED = Capacitor.getPlatform() !== "ios" && Boolean(HOSTING_BACKEND_URL)
 
 export type Plan = {
   id: string
