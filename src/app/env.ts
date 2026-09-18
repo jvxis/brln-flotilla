@@ -24,6 +24,13 @@ export const BLOCKED_RELAYS = fromCsv(env("VITE_BLOCKED_RELAYS")).map(normalizeR
 
 export const INDEXER_RELAYS = fromCsv(env("VITE_INDEXER_RELAYS")).map(normalizeRelayUrl)
 
+// Where to look for the profile of the person signing in, and only theirs, when the
+// space has none for them yet. Their npub is already public; the npubs of the other
+// members are not, and are never asked about here.
+export const PROFILE_IMPORT_RELAYS = fromCsv(env("VITE_PROFILE_IMPORT_RELAYS")).map(
+  normalizeRelayUrl,
+)
+
 export const DEFAULT_RELAYS = fromCsv(env("VITE_DEFAULT_RELAYS")).map(normalizeRelayUrl)
 
 export const DEFAULT_SEARCH_RELAYS = fromCsv(env("VITE_DEFAULT_SEARCH_RELAYS")).map(

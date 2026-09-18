@@ -86,6 +86,16 @@ A relay in `PLATFORM_RELAYS` is the one this build exists for, so it authenticat
 
 Upstream candidate: yes, for any deployment with a closed platform relay.
 
+### 9. Bring the member's own profile into the space
+
+`src/app/profileImport.ts`, `src/app/env.ts`, `deploy/brln.env`, registered in `src/routes/+layout.svelte`.
+
+This build talks to one relay, the club's, so a member who already uses Nostr arrived with no name and no picture and had to type them again, as if their identity had not come along. The official app inherits the profile because it queries public indexer relays for everyone.
+
+Doing that here would hand an outside relay the npubs of everyone in a closed space. Instead, when the space has no profile for the person signing in — and only then — their own `kind 0` is fetched from `VITE_PROFILE_IMPORT_RELAYS` and the signed event is copied to the club's relay. Their npub is already public; nobody else's is ever asked about.
+
+Upstream candidate: yes, for any closed deployment.
+
 ## Updating from upstream
 
 ```sh

@@ -25,6 +25,7 @@
   import {setupAnalytics} from "@app/analytics"
   import {setupLogging} from "@app/logger"
   import "@app/policies"
+  import "@app/profileImport"
   import {restoreSession} from "@app/session"
   import {signerRequests} from "@app/signer"
   import {wallet} from "@app/lightning"
