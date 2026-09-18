@@ -1,5 +1,5 @@
 import * as nip19 from "nostr-tools/nip19"
-import {derived, get} from "svelte/store"
+import {derived, get, writable} from "svelte/store"
 import {formatTimestampAsDate, int, sortBy, uniq, MINUTE} from "@welshman/lib"
 import type {Maybe} from "@welshman/lib"
 import {outbox, relay, seen, toNostrURI} from "@welshman/util"
@@ -126,7 +126,43 @@ export const publishRoomQuote = async ({
 
 export const userRoomList = deriveUserItem(RoomLists)
 
-export const userSpaceUrls = derived(userRoomList, $userRoomList => $userRoomList?.urls() ?? [])
+// Leaving a members-only space rewrites the room list on that same relay, which a
+// person who was removed from it can no longer write to. The app remembers such a
+// departure locally so the space stops being listed instead of coming back on the
+// next read; joining again clears the entry.
+const LEFT_SPACES_KEY = "flotilla/left-spaces"
+
+const readLeftSpaces = (): string[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LEFT_SPACES_KEY) ?? "[]")
+
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export const locallyLeftSpaceUrls = writable<string[]>(readLeftSpaces())
+
+locallyLeftSpaceUrls.subscribe(urls => {
+  try {
+    localStorage.setItem(LEFT_SPACES_KEY, JSON.stringify(urls))
+  } catch {
+    // A browser that refuses storage keeps the list for this session only.
+  }
+})
+
+export const forgetLocalDeparture = (url: string) =>
+  locallyLeftSpaceUrls.update(urls => urls.filter(entry => entry !== url))
+
+export const rememberLocalDeparture = (url: string) =>
+  locallyLeftSpaceUrls.update(urls => uniq([...urls, url]))
+
+export const userSpaceUrls = derived(
+  [userRoomList, locallyLeftSpaceUrls],
+  ([$userRoomList, $locallyLeftSpaceUrls]) =>
+    ($userRoomList?.urls() ?? []).filter(url => !$locallyLeftSpaceUrls.includes(url)),
+)
 
 // Spaces get reordered from lists that show only some of them, so the urls given here go back
 // in the slots the ones they replace occupied.

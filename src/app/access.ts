@@ -20,6 +20,7 @@ import {stripPrefix} from "@lib/util"
 import {app, command, relayManagement, roomLists, thunks, writer} from "@app/core"
 import {PLATFORM_ACCESS_URL, PLATFORM_URL} from "@app/env"
 import {relaysMostlyRestricted} from "@app/policies"
+import {forgetLocalDeparture, rememberLocalDeparture} from "@app/rooms"
 import {Push} from "@app/push"
 import {deriveSocket} from "@app/relays"
 import {notificationSettings, removeTrustedRelay, setSpaceNotifications} from "@app/settings"
@@ -150,6 +151,10 @@ export const leaveRoom = async (url: string, h: string) => {
 }
 
 export const leaveSpace = async (url: string) => {
+  // Remembered first: on a members-only relay the list update below is refused for
+  // someone who was already removed, and without this the space comes back.
+  rememberLocalDeparture(url)
+
   await roomLists.get().removeRelay(url).then(publish)
   await publishLeaveRequest(url)
   await removeTrustedRelay(url)
@@ -338,6 +343,7 @@ export class Access {
   }
 
   async completeJoin(notifications: boolean) {
+    forgetLocalDeparture(this.url)
     await this.configureNotifications(notifications)
     await roomLists.get().addRelay(this.url).then(publish)
     this.clearRestricted()
