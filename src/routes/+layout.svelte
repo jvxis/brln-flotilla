@@ -129,8 +129,23 @@
   // Cleanup on page close
   window.addEventListener("beforeunload", closeStorage)
 
+  // The browser refuses to register a service worker on an origin whose certificate
+  // it does not trust, which is every LightningOS node: the app there is served with
+  // a self-signed certificate. SvelteKit's built-in registration had no error handler
+  // and left an uncaught SecurityError on every load, burying real errors in the
+  // console. Nothing else depends on the registration, so a failure is just noted.
+  const registerServiceWorker = () => {
+    if (!__REGISTER_SERVICE_WORKER__ || !("serviceWorker" in navigator)) return
+
+    navigator.serviceWorker.register("/service-worker.js").catch(error => {
+      console.info("Service worker not registered:", error?.message || error)
+    })
+  }
+
   const unsubscribe = lib.call(async () => {
     const unsubscribers: Unsubscriber[] = []
+
+    registerServiceWorker()
 
     // Attach the user before anything reads or decrypts on their behalf
     unsubscribers.push(await restoreSession())

@@ -18,7 +18,11 @@ export default {
   preprocess: vitePreprocess(),
   kit: {
     serviceWorker: {
-      register: process.env.FLOTILLA_DESKTOP !== "1",
+      // SvelteKit's own registration is an inline script with no error handler. On a
+      // LightningOS node the app is served with a self-signed certificate, where the
+      // browser refuses to register a service worker, and every page load ended in an
+      // uncaught SecurityError. src/routes/+layout.svelte registers it instead.
+      register: false,
     },
     adapter: adapter({
       fallback: "index.html",

@@ -42,6 +42,11 @@ export default defineConfig({
   build: {
     sourcemap: false,
   },
+  define: {
+    // The desktop build has no service worker, the same condition SvelteKit's own
+    // registration used before it moved into the app.
+    __REGISTER_SERVICE_WORKER__: JSON.stringify(process.env.FLOTILLA_DESKTOP !== "1"),
+  },
   plugins: [
     sveltekit(),
     process.env.FLOTILLA_DESKTOP !== "1" &&

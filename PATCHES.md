@@ -54,6 +54,18 @@ Room invites in `RoomDetail.svelte` stay, because they are already behind `userI
 
 Upstream candidate: no. It is a decision of this deployment, not a defect.
 
+### 6. Survive a browser that refuses the emoji database, and a certificate it does not trust
+
+`src/lib/components/EmojiPicker.svelte`, `src/routes/+layout.svelte`, `svelte.config.js`, `vite.config.ts`, `src/app.d.ts`.
+
+Two things break on a LightningOS node that do not break on the website.
+
+The emoji picker keeps its list in IndexedDB. Where the browser refuses that — a private window, site data blocked for the origin, an extension in the way — the picker says only "Could not load emoji." and reacting becomes impossible. A short list of reactions now takes over when the database fails.
+
+The app is served from a node with a self-signed certificate, and a browser refuses to register a service worker on an origin it does not trust. SvelteKit registers it from an inline script with no error handler, so every page load ended in an uncaught `SecurityError` that buried real errors in the console. The registration moved into the app, where the failure is noted and ignored; `__REGISTER_SERVICE_WORKER__` keeps the desktop build's behaviour.
+
+Upstream candidate: both, yes.
+
 ## Updating from upstream
 
 ```sh
