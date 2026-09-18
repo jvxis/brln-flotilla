@@ -34,6 +34,14 @@ Upstream candidate: no.
 
 `deploy/brln.env` is the configuration of `chat.br-ln.com`. QR code login pairs over `wss://signer.br-ln.com`, a relay that only carries NIP-46 messages, because the members-only relay refuses the throwaway keys of devices that are still logging in. `.github/workflows/ci.yml` runs lint, type check and the BRLN build, and fails if the build references a Coracle service.
 
+### 4. Reconnect after the relay admits a member
+
+`src/app/access.ts` — a successful join closes and reopens the socket.
+
+On a members-only relay the socket authenticates before the pubkey is admitted, so it stays restricted on that connection: the client showed "Authenticating" until the person reloaded the page. Reconnecting applies the new membership immediately.
+
+Upstream candidate: yes.
+
 ## Updating from upstream
 
 ```sh

@@ -204,6 +204,15 @@ const formatAuthError = (status: AuthStatus, details?: string) => {
   return `Failed to authenticate (${message})`
 }
 
+// The socket authenticated before the relay admitted this pubkey, so it stays
+// restricted on its current connection. Reconnecting applies the new membership
+// right away; without it the client sits on "Authenticating" until the person
+// reloads the page.
+const reconnectAfterJoin = (socket: Socket) => {
+  socket.close()
+  socket.attemptToOpen()
+}
+
 export const attemptRelayAccess = async (url: string, claim = "") => {
   const socket = app.get().pool.get(url)
 
@@ -235,7 +244,10 @@ export const attemptRelayAccess = async (url: string, claim = "") => {
   const thunk = await publishJoinRequest(url, claim)
   const error = await thunk.waitForError()
 
-  if (shouldIgnoreError(error)) return
+  if (shouldIgnoreError(error)) {
+    reconnectAfterJoin(socket)
+    return
+  }
 
   if (error.includes("invite code")) {
     return "join request rejected"
@@ -248,7 +260,13 @@ export const attemptRelayAccess = async (url: string, claim = "") => {
       : "This space requires an invite code"
   }
 
-  return stripPrefix(error)
+  const remaining = stripPrefix(error)
+
+  if (!remaining) {
+    reconnectAfterJoin(socket)
+  }
+
+  return remaining
 }
 
 export class Access {
