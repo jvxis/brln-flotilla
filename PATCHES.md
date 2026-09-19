@@ -118,6 +118,18 @@ The settings are saved either way, with push forced off, and the message says wh
 
 Upstream candidate: yes.
 
+### 12. A signer that never answers must not leave a blank page
+
+`src/routes/+layout.svelte`, `src/app/session.ts`.
+
+A member reported the chat opening once and then showing nothing but white on every later visit, in two browsers and in a private window, until he cleared the site data — which took him back to the login screen.
+
+The whole startup sits inside `{#await unsubscribe}`, which renders nothing while pending, and the startup restores the session: `User.fromSigner` does `await signer.getPubkey()`, which for a remote signer is a question asked over the network. Welshman's NIP-46 request has no timeout, so a signer that is closed, locked or asleep leaves that promise unsettled — and the page blank, on every visit, with no way out but clearing storage.
+
+Two changes. The pending branch now renders a spinner and, after twelve seconds, says the signer is not answering and offers "Try again" and "Log out". And restoring the session gives up after fifteen seconds and lets the app come up without the signer; the session is kept, so reopening with the signer awake works.
+
+Upstream candidate: yes, both.
+
 ## Updating from upstream
 
 ```sh

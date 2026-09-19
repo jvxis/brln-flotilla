@@ -18,6 +18,8 @@
   import * as lib from "@welshman/lib"
   import * as plugins from "@welshman/app"
   import {isMobile, documentActive} from "@lib/html"
+  import Button from "@lib/components/Button.svelte"
+  import Spinner from "@lib/components/Spinner.svelte"
   import AppContainer from "@app/components/AppContainer.svelte"
   import ModalContainer from "@app/components/ModalContainer.svelte"
   import * as core from "@app/core"
@@ -26,7 +28,7 @@
   import {setupLogging} from "@app/logger"
   import "@app/policies"
   import "@app/profileImport"
-  import {restoreSession} from "@app/session"
+  import {logout, restoreSession} from "@app/session"
   import {signerRequests} from "@app/signer"
   import {wallet} from "@app/lightning"
   import {kv, ss, storage} from "@app/storage"
@@ -142,6 +144,11 @@
       console.info("Service worker not registered:", error?.message || error)
     })
   }
+
+  // A remote signer can simply not answer, and then startup never finishes. After a
+  // few seconds the person gets told, instead of staring at nothing.
+  let startupIsSlow = $state(false)
+  setTimeout(() => (startupIsSlow = true), 12000)
 
   const unsubscribe = lib.call(async () => {
     const unsubscribers: Unsubscriber[] = []
@@ -313,7 +320,24 @@
 </svelte:head>
 
 {#await unsubscribe}
-  <!-- pass -->
+  <!-- Startup waits on the signer, and a remote signer that never answers used to
+       leave a blank page with no way out: the session is restored on every visit,
+       so the blank page came back on every visit. Say what is happening, and give
+       the person both ways out. -->
+  <div class="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+    <Spinner />
+    {#if startupIsSlow}
+      <p class="max-w-sm">
+        Your signer is not answering. Make sure it is open and unlocked, then try again.
+      </p>
+      <div class="flex gap-2">
+        <Button class="button button-primary" onclick={() => window.location.reload()}>
+          Try again
+        </Button>
+        <Button class="button button-neutral" onclick={logout}>Log out</Button>
+      </div>
+    {/if}
+  </div>
 {:then}
   <div class={isMobile ? "fl mobile" : "fl"} data-fl-theme={$flTheme}>
     <AppContainer>
