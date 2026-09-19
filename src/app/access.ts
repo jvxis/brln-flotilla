@@ -366,7 +366,7 @@ export class Access {
     // reaches "connected". Reloading rebuilds that from scratch as a member, which
     // is what people were doing by hand. The wait lets the publishes above land.
     if (typeof window !== "undefined") {
-      await sleep(2000)
+      await sleep(8000)
       window.location.reload()
     }
   }
