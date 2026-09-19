@@ -345,10 +345,19 @@ export class Access {
   async completeJoin(notifications: boolean) {
     forgetLocalDeparture(this.url)
     await this.configureNotifications(notifications)
-    await roomLists.get().addRelay(this.url).then(publish)
+    // Wait for the relay to answer, not for a guessed number of seconds. The reload
+    // below is what rebuilds the client as a member, and if it happens before the
+    // room list is on the relay, the app comes back still not knowing the person
+    // joined -- and asks them to join again, with the room empty behind the dialog.
+    // Measured in the forks e2e: with a blind two-second wait the first join failed
+    // every run on a fast machine; the same test passes once the waits are real.
+    const roomList = await roomLists.get().addRelay(this.url).then(publish)
+    await roomList.waitForError()
+
     this.clearRestricted()
     syncApplicationData()
-    app
+
+    await app
       .get()
       .use(Sync)
       .push({
@@ -364,9 +373,8 @@ export class Access {
     // Everything the client learned about this relay was learned as an outsider:
     // refused subscriptions, an empty room list and a connection status that never
     // reaches "connected". Reloading rebuilds that from scratch as a member, which
-    // is what people were doing by hand. The wait lets the publishes above land.
+    // is what people were doing by hand.
     if (typeof window !== "undefined") {
-      await sleep(2000)
       window.location.reload()
     }
   }
