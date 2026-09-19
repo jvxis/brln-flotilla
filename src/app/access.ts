@@ -28,6 +28,10 @@ import {syncApplicationData} from "@app/sync"
 
 export const ROOM_CREATE_INVITE = 9009
 
+// src/app/storage.ts batches writes to indexeddb on this interval before deferring
+// them to idle time. Anything that must survive a reload has to outlive it.
+const CACHE_BATCH_INTERVAL = 3000
+
 export type InviteData = {
   url: string
   claim: string
@@ -193,6 +197,34 @@ const waitForAuth = async (socket: Socket) => {
     signal: AbortSignal.timeout(10_000),
     condition: () => authTerminalStatuses.includes(socket.auth.status),
   }).catch(() => {})
+}
+
+// Asking a closed relay anything before it has authenticated us gets a `restricted:`
+// refusal, which Welshman treats as final -- the request is over, and reopening the
+// socket does not revive it. So whoever needs an answer from the space's own relay
+// waits here first: the socket open, the challenge sent, the authentication settled.
+// Every wait is bounded and none of them throws; a relay that asks for no auth simply
+// never reaches `Requested` and the caller goes ahead, as it did before.
+export const waitUntilRelayCanAnswer = async (url: string) => {
+  const socket = app.get().pool.get(url)
+
+  socket.attemptToOpen()
+
+  await poll({
+    signal: AbortSignal.timeout(3000),
+    condition: () => socket.status === SocketStatus.Open,
+  }).catch(() => {})
+
+  if (socket.status !== SocketStatus.Open) return
+
+  await poll({
+    signal: AbortSignal.timeout(3000),
+    condition: () => socket.auth.status === AuthStatus.Requested,
+  }).catch(() => {})
+
+  if (socket.auth.status !== AuthStatus.Requested) return
+
+  await waitForAuth(socket)
 }
 
 const formatAuthError = (status: AuthStatus, details?: string) => {
@@ -365,8 +397,13 @@ export class Access {
     // refused subscriptions, an empty room list and a connection status that never
     // reaches "connected". Reloading rebuilds that from scratch as a member, which
     // is what people were doing by hand. The wait lets the publishes above land.
+    // The reload throws away everything in memory, so whatever has not reached the
+    // cache yet is lost -- including the room list just published, which is exactly
+    // what the page needs on the way back to know this person joined. src/app/storage.ts
+    // writes in batches of CACHE_BATCH_INTERVAL and defers them to idle time, so the
+    // wait has to clear that, not merely be "a couple of seconds".
     if (typeof window !== "undefined") {
-      await sleep(2000)
+      await sleep(CACHE_BATCH_INTERVAL * 2)
       window.location.reload()
     }
   }
