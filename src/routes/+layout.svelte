@@ -37,6 +37,7 @@
   import {setupShareIntents, shareFromNative} from "@app/share"
   import {shouldUnwrap, syncApplicationData} from "@app/sync"
   import * as env from "@app/env"
+  import {waitUntilRelayCanAnswer} from "@app/access"
   import {activeTheme, flTheme, theme} from "@app/theme"
   import {toast, pushToast} from "@app/toast"
   import * as notifications from "@app/notifications"
@@ -206,6 +207,22 @@
 
     // Close the database connection on reload
     unsubscribers.push(closeStorage)
+
+    // Num relay fechado, perguntar antes de autenticar nao e so inutil: e
+    // destrutivo. O relay responde CLOSED auth-required, e a politica da welshman
+    // que deveria salvar essas inscricoes engole a recusa para nao alarmar o
+    // chamador e promete reenviar quando a autenticacao fechar -- mas ela guarda
+    // so as ultimas cinquenta, e nao reenvia nada se a autenticacao nunca chegar a
+    // Ok. O que cai fora desse buffer some sem erro em lugar nenhum: nem no
+    // console, nem na camada de inscricao. A sala simplesmente para de receber, e
+    // so recarregar ou trocar de sala traz de volta.
+    //
+    // Medido em producao em 20/09/2026: dezenas de CLOSED auth-required logo apos
+    // carregar a pagina, e nenhuma inscricao ao vivo de sala em pe no socket.
+    //
+    // Esperar aqui evita a recusa em vez de remediar depois. A espera e limitada e
+    // nunca lanca: um relay que nao pede autenticacao segue direto, como antes.
+    await Promise.all(env.PLATFORM_RELAYS.map(waitUntilRelayCanAnswer))
 
     // History, navigation, application data
     unsubscribers.push(setupHistory(), setupAnalytics(), syncApplicationData())
