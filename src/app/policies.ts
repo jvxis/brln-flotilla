@@ -26,7 +26,7 @@ import {
 } from "@welshman/app"
 import type {AppPolicy, IApp} from "@welshman/app"
 import {app, logger, appPolicies} from "@app/core"
-import {BLOCKED_RELAYS, PLATFORM_RELAYS} from "@app/env"
+import {BLOCKED_RELAYS} from "@app/env"
 import {userSettingsValues, getSetting, RelayAuthMode} from "@app/settings"
 
 // Relays sending events with empty signatures that the user has to choose to trust
@@ -64,15 +64,6 @@ export const authPolicy = makeAppPolicyAuth((socket, $app) => {
 
   if (!$pubkey) return false
   if ($app.use(BlockedRelayLists).urls($pubkey).get().includes(socket.url)) return false
-
-  // The club's space is the relay this build exists for, and it serves nothing to a
-  // client that has not authenticated. Every other rule below waits for a list that
-  // is itself read from the relay or from the local cache, so on a first load — or
-  // in a browser that keeps no cache — nobody authenticated, the room came back
-  // empty, and messages only appeared after leaving the room and returning, which
-  // re-subscribes once publishing something had forced the authentication.
-  if (PLATFORM_RELAYS.includes(socket.url)) return true
-
   if (getSetting("relay_auth") === RelayAuthMode.Aggressive) return true
   if ($app.use(RoomLists).urls($pubkey).get().includes(socket.url)) return true
   if ($app.use(RelayLists).urls($pubkey).get().includes(socket.url)) return true

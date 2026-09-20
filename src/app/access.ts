@@ -18,19 +18,14 @@ import {RelayJoin, RelayLeave, RoomJoin, RoomLeave} from "@welshman/domain"
 import {Sync, User, publish} from "@welshman/app"
 import {stripPrefix} from "@lib/util"
 import {app, command, relayManagement, roomLists, thunks, writer} from "@app/core"
-import {PLATFORM_ACCESS_URL, PLATFORM_URL} from "@app/env"
+import {PLATFORM_URL} from "@app/env"
 import {relaysMostlyRestricted} from "@app/policies"
-import {forgetLocalDeparture, rememberLocalDeparture} from "@app/rooms"
 import {Push} from "@app/push"
 import {deriveSocket} from "@app/relays"
 import {notificationSettings, removeTrustedRelay, setSpaceNotifications} from "@app/settings"
 import {syncApplicationData} from "@app/sync"
 
 export const ROOM_CREATE_INVITE = 9009
-
-// src/app/storage.ts batches writes to indexeddb on this interval before deferring
-// them to idle time. Anything that must survive a reload has to outlive it.
-const CACHE_BATCH_INTERVAL = 3000
 
 export type InviteData = {
   url: string
@@ -155,10 +150,6 @@ export const leaveRoom = async (url: string, h: string) => {
 }
 
 export const leaveSpace = async (url: string) => {
-  // Remembered first: on a members-only relay the list update below is refused for
-  // someone who was already removed, and without this the space comes back.
-  rememberLocalDeparture(url)
-
   await roomLists.get().removeRelay(url).then(publish)
   await publishLeaveRequest(url)
   await removeTrustedRelay(url)
@@ -199,34 +190,6 @@ const waitForAuth = async (socket: Socket) => {
   }).catch(() => {})
 }
 
-// Asking a closed relay anything before it has authenticated us gets a `restricted:`
-// refusal, which Welshman treats as final -- the request is over, and reopening the
-// socket does not revive it. So whoever needs an answer from the space's own relay
-// waits here first: the socket open, the challenge sent, the authentication settled.
-// Every wait is bounded and none of them throws; a relay that asks for no auth simply
-// never reaches `Requested` and the caller goes ahead, as it did before.
-export const waitUntilRelayCanAnswer = async (url: string) => {
-  const socket = app.get().pool.get(url)
-
-  socket.attemptToOpen()
-
-  await poll({
-    signal: AbortSignal.timeout(3000),
-    condition: () => socket.status === SocketStatus.Open,
-  }).catch(() => {})
-
-  if (socket.status !== SocketStatus.Open) return
-
-  await poll({
-    signal: AbortSignal.timeout(3000),
-    condition: () => socket.auth.status === AuthStatus.Requested,
-  }).catch(() => {})
-
-  if (socket.auth.status !== AuthStatus.Requested) return
-
-  await waitForAuth(socket)
-}
-
 const formatAuthError = (status: AuthStatus, details?: string) => {
   if (status === AuthStatus.DeniedSignature) {
     return "Failed to authenticate — check your signer"
@@ -239,15 +202,6 @@ const formatAuthError = (status: AuthStatus, details?: string) => {
   const message = details || last(status.split(":"))
 
   return `Failed to authenticate (${message})`
-}
-
-// The socket authenticated before the relay admitted this pubkey, so it stays
-// restricted on its current connection, and its refused subscriptions are gone.
-// Closing is enough: the socket reopens on its own and authenticates as a member.
-// Opening it here as well would race with that and leave a second, unauthenticated
-// connection behind, which is what the status indicator ends up reading.
-const reconnectAfterJoin = (socket: Socket) => {
-  socket.close()
 }
 
 export const attemptRelayAccess = async (url: string, claim = "") => {
@@ -281,10 +235,7 @@ export const attemptRelayAccess = async (url: string, claim = "") => {
   const thunk = await publishJoinRequest(url, claim)
   const error = await thunk.waitForError()
 
-  if (shouldIgnoreError(error)) {
-    reconnectAfterJoin(socket)
-    return
-  }
+  if (shouldIgnoreError(error)) return
 
   if (error.includes("invite code")) {
     return "join request rejected"
@@ -292,18 +243,10 @@ export const attemptRelayAccess = async (url: string, claim = "") => {
 
   // A space that isn't open to the public refuses a join carrying no claim at all
   if (error.includes("claim")) {
-    return PLATFORM_ACCESS_URL
-      ? "This space is for members only"
-      : "This space requires an invite code"
+    return "This space requires an invite code"
   }
 
-  const remaining = stripPrefix(error)
-
-  if (!remaining) {
-    reconnectAfterJoin(socket)
-  }
-
-  return remaining
+  return stripPrefix(error)
 }
 
 export class Access {
@@ -375,7 +318,6 @@ export class Access {
   }
 
   async completeJoin(notifications: boolean) {
-    forgetLocalDeparture(this.url)
     await this.configureNotifications(notifications)
     await roomLists.get().addRelay(this.url).then(publish)
     this.clearRestricted()
@@ -392,20 +334,6 @@ export class Access {
           },
         ],
       })
-
-    // Everything the client learned about this relay was learned as an outsider:
-    // refused subscriptions, an empty room list and a connection status that never
-    // reaches "connected". Reloading rebuilds that from scratch as a member, which
-    // is what people were doing by hand. The wait lets the publishes above land.
-    // The reload throws away everything in memory, so whatever has not reached the
-    // cache yet is lost -- including the room list just published, which is exactly
-    // what the page needs on the way back to know this person joined. src/app/storage.ts
-    // writes in batches of CACHE_BATCH_INTERVAL and defers them to idle time, so the
-    // wait has to clear that, not merely be "a couple of seconds".
-    if (typeof window !== "undefined") {
-      await sleep(CACHE_BATCH_INTERVAL * 2)
-      window.location.reload()
-    }
   }
 
   async joinSpace({

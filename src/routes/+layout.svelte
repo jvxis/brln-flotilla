@@ -18,8 +18,6 @@
   import * as lib from "@welshman/lib"
   import * as plugins from "@welshman/app"
   import {isMobile, documentActive} from "@lib/html"
-  import Button from "@lib/components/Button.svelte"
-  import Spinner from "@lib/components/Spinner.svelte"
   import AppContainer from "@app/components/AppContainer.svelte"
   import ModalContainer from "@app/components/ModalContainer.svelte"
   import * as core from "@app/core"
@@ -27,8 +25,7 @@
   import {setupAnalytics} from "@app/analytics"
   import {setupLogging} from "@app/logger"
   import "@app/policies"
-  import "@app/profileImport"
-  import {logout, restoreSession} from "@app/session"
+  import {restoreSession} from "@app/session"
   import {signerRequests} from "@app/signer"
   import {wallet} from "@app/lightning"
   import {kv, ss, storage} from "@app/storage"
@@ -37,7 +34,6 @@
   import {setupShareIntents, shareFromNative} from "@app/share"
   import {shouldUnwrap, syncApplicationData} from "@app/sync"
   import * as env from "@app/env"
-  import {waitUntilRelayCanAnswer} from "@app/access"
   import {activeTheme, flTheme, theme} from "@app/theme"
   import {toast, pushToast} from "@app/toast"
   import * as notifications from "@app/notifications"
@@ -133,11 +129,10 @@
   // Cleanup on page close
   window.addEventListener("beforeunload", closeStorage)
 
-  // The browser refuses to register a service worker on an origin whose certificate
-  // it does not trust, which is every LightningOS node: the app there is served with
-  // a self-signed certificate. SvelteKit's built-in registration had no error handler
-  // and left an uncaught SecurityError on every load, burying real errors in the
-  // console. Nothing else depends on the registration, so a failure is just noted.
+  // O navegador recusa registrar um service worker numa origem cujo certificado nao
+  // confia, que e todo node do LightningOS. O registro do proprio SvelteKit nao trata
+  // erro e deixava um SecurityError a cada carregamento, enterrando os erros de
+  // verdade no console. Nada depende do registro, entao a falha so e anotada.
   const registerServiceWorker = () => {
     if (!__REGISTER_SERVICE_WORKER__ || !("serviceWorker" in navigator)) return
 
@@ -145,11 +140,6 @@
       console.info("Service worker not registered:", error?.message || error)
     })
   }
-
-  // A remote signer can simply not answer, and then startup never finishes. After a
-  // few seconds the person gets told, instead of staring at nothing.
-  let startupIsSlow = $state(false)
-  setTimeout(() => (startupIsSlow = true), 12000)
 
   const unsubscribe = lib.call(async () => {
     const unsubscribers: Unsubscriber[] = []
@@ -207,22 +197,6 @@
 
     // Close the database connection on reload
     unsubscribers.push(closeStorage)
-
-    // Num relay fechado, perguntar antes de autenticar nao e so inutil: e
-    // destrutivo. O relay responde CLOSED auth-required, e a politica da welshman
-    // que deveria salvar essas inscricoes engole a recusa para nao alarmar o
-    // chamador e promete reenviar quando a autenticacao fechar -- mas ela guarda
-    // so as ultimas cinquenta, e nao reenvia nada se a autenticacao nunca chegar a
-    // Ok. O que cai fora desse buffer some sem erro em lugar nenhum: nem no
-    // console, nem na camada de inscricao. A sala simplesmente para de receber, e
-    // so recarregar ou trocar de sala traz de volta.
-    //
-    // Medido em producao em 20/09/2026: dezenas de CLOSED auth-required logo apos
-    // carregar a pagina, e nenhuma inscricao ao vivo de sala em pe no socket.
-    //
-    // Esperar aqui evita a recusa em vez de remediar depois. A espera e limitada e
-    // nunca lanca: um relay que nao pede autenticacao segue direto, como antes.
-    await Promise.all(env.PLATFORM_RELAYS.map(waitUntilRelayCanAnswer))
 
     // History, navigation, application data
     unsubscribers.push(setupHistory(), setupAnalytics(), syncApplicationData())
@@ -337,24 +311,7 @@
 </svelte:head>
 
 {#await unsubscribe}
-  <!-- Startup waits on the signer, and a remote signer that never answers used to
-       leave a blank page with no way out: the session is restored on every visit,
-       so the blank page came back on every visit. Say what is happening, and give
-       the person both ways out. -->
-  <div class="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
-    <Spinner />
-    {#if startupIsSlow}
-      <p class="max-w-sm">
-        Your signer is not answering. Make sure it is open and unlocked, then try again.
-      </p>
-      <div class="flex gap-2">
-        <Button class="button button-primary" onclick={() => window.location.reload()}>
-          Try again
-        </Button>
-        <Button class="button button-neutral" onclick={logout}>Log out</Button>
-      </div>
-    {/if}
-  </div>
+  <!-- pass -->
 {:then}
   <div class={isMobile ? "fl mobile" : "fl"} data-fl-theme={$flTheme}>
     <AppContainer>
