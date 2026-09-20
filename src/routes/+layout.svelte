@@ -35,6 +35,7 @@
   import {shouldUnwrap, syncApplicationData} from "@app/sync"
   import * as env from "@app/env"
   import {waitUntilRelayCanAnswer} from "@app/access"
+  import "@app/profileImport"
   import {activeTheme, flTheme, theme} from "@app/theme"
   import {toast, pushToast} from "@app/toast"
   import * as notifications from "@app/notifications"
