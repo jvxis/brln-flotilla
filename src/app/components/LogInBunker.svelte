@@ -62,7 +62,6 @@
   // Long enough for a phone waking up and a signer tab in the background, short
   // enough that nobody watches a spinner wondering whether it is broken.
   const SIGNER_TIMEOUT = 20000
-  const SIGNER_SILENT = Symbol("the signer never answered")
 
   const {loading, bunker} = controller
 
@@ -99,10 +98,10 @@
       // the same from here, which is the likeliest reason to be waiting.
       const result = await Promise.race([
         broker.connect(connectSecret, NIP46_PERMS),
-        sleep(SIGNER_TIMEOUT).then(() => SIGNER_SILENT),
+        sleep(SIGNER_TIMEOUT).then(() => undefined),
       ])
 
-      if (result === SIGNER_SILENT) {
+      if (result === undefined) {
         broker.cleanup()
 
         return pushToast({
