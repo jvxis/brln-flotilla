@@ -34,6 +34,7 @@
   import {setupShareIntents, shareFromNative} from "@app/share"
   import {shouldUnwrap, syncApplicationData} from "@app/sync"
   import * as env from "@app/env"
+  import {waitUntilRelayCanAnswer} from "@app/access"
   import {activeTheme, flTheme, theme} from "@app/theme"
   import {toast, pushToast} from "@app/toast"
   import * as notifications from "@app/notifications"
@@ -199,6 +200,11 @@
     unsubscribers.push(closeStorage)
 
     // History, navigation, application data
+    // Autenticar no relay do clube antes de perguntar qualquer coisa. Num relay
+    // fechado, as inscricoes disparadas antes disso sao recusadas, descartadas, e
+    // levam o proprio socket junto -- ver waitUntilRelayCanAnswer.
+    await Promise.all(env.PLATFORM_RELAYS.map(waitUntilRelayCanAnswer))
+
     unsubscribers.push(setupHistory(), setupAnalytics(), syncApplicationData())
 
     // Listen for links shared into the app from elsewhere on the device

@@ -190,6 +190,43 @@ const waitForAuth = async (socket: Socket) => {
   }).catch(() => {})
 }
 
+// Num relay fechado, perguntar antes de autenticar destroi a propria conexao.
+// Medido na VM de teste em 20/09/2026, com relogio por socket: a pagina abre o
+// socket e dispara cerca de vinte inscricoes antes de a autenticacao fechar; o
+// relay recusa todas com auth-required; a welshman trata a recusa como definitiva
+// e as descarta; sem nenhuma inscricao viva a politica de ciclo de vida fecha o
+// socket. A assinatura do desafio, que vem do signer remoto pela rede, chega num
+// socket que ja esta morrendo -- numa das rodadas, 0,2s depois de ser enviada. Ai
+// nasce um socket novo, com desafio novo, e tudo recomeca.
+//
+// O efeito visivel e a pessoa presa em "Authenticating" e a sala sem receber nada
+// ao vivo, com a conversa antiga na tela porque veio do cache. Como e corrida,
+// falha em parte das vezes: quatro rodadas na VM, tres falharam.
+//
+// Esperar aqui evita a recusa em vez de remediar depois. A espera e limitada e
+// nunca lanca: um relay que nao pede autenticacao segue direto, como antes.
+export const waitUntilRelayCanAnswer = async (url: string) => {
+  const socket = app.get().pool.get(url)
+
+  socket.attemptToOpen()
+
+  await poll({
+    signal: AbortSignal.timeout(3000),
+    condition: () => socket.status === SocketStatus.Open,
+  }).catch(() => {})
+
+  if (socket.status !== SocketStatus.Open) return
+
+  await poll({
+    signal: AbortSignal.timeout(3000),
+    condition: () => socket.auth.status === AuthStatus.Requested,
+  }).catch(() => {})
+
+  if (socket.auth.status !== AuthStatus.Requested) return
+
+  await waitForAuth(socket)
+}
+
 const formatAuthError = (status: AuthStatus, details?: string) => {
   if (status === AuthStatus.DeniedSignature) {
     return "Failed to authenticate — check your signer"
