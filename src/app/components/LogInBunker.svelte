@@ -1,5 +1,6 @@
 <script lang="ts">
   import cx from "classnames"
+  import {sleep} from "@welshman/lib"
   import {Capacitor} from "@capacitor/core"
   import {onMount, onDestroy} from "svelte"
   import type {Nip46ResponseWithResult} from "@welshman/signer"
@@ -58,6 +59,11 @@
     },
   })
 
+  // Long enough for a phone waking up and a signer tab in the background, short
+  // enough that nobody watches a spinner wondering whether it is broken.
+  const SIGNER_TIMEOUT = 20000
+  const SIGNER_SILENT = Symbol("the signer never answered")
+
   const {loading, bunker} = controller
 
   const onSubmit = async () => {
@@ -84,8 +90,41 @@
 
       const {clientSecret} = controller
       const broker = new Nip46Broker({relays, clientSecret, signerPubkey})
-      const result = await broker.connect(connectSecret, NIP46_PERMS)
-      const pubkey = await broker.getPublicKey()
+
+      // A signer says nothing at all to a device it does not know -- on purpose,
+      // so that a second signer holding the same identity cannot refuse on its
+      // behalf. Silence is therefore an ordinary outcome here, not an error
+      // anyone will report, and without a deadline this button spins for ever
+      // while the person is told nothing. An expired pairing link looks exactly
+      // the same from here, which is the likeliest reason to be waiting.
+      const result = await Promise.race([
+        broker.connect(connectSecret, NIP46_PERMS),
+        sleep(SIGNER_TIMEOUT).then(() => SIGNER_SILENT),
+      ])
+
+      if (result === SIGNER_SILENT) {
+        broker.cleanup()
+
+        return pushToast({
+          theme: "error",
+          message:
+            "The signer did not answer. Open its tab, create a new connection there, and try again.",
+        })
+      }
+
+      const pubkey = await Promise.race([
+        broker.getPublicKey(),
+        sleep(SIGNER_TIMEOUT).then(() => undefined),
+      ])
+
+      if (!pubkey) {
+        broker.cleanup()
+
+        return pushToast({
+          theme: "error",
+          message: "The signer connected but never sent its identity. Please try again.",
+        })
+      }
 
       // TODO: remove ack result
       if (pubkey && ["ack", connectSecret].includes(result)) {
