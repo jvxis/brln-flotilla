@@ -17,7 +17,7 @@
   import SpaceTrustRelay from "@app/components/SpaceTrustRelay.svelte"
   import SpaceJoin from "@app/components/SpaceJoin.svelte"
   import SpaceRedirect from "@app/components/SpaceRedirect.svelte"
-  import {deriveRelayAuthError} from "@app/access"
+  import {deriveRelayAuthError, waitUntilRelayCanAnswer} from "@app/access"
   import {relays, roomLists, user} from "@app/core"
   import {userSpaceUrls} from "@app/rooms"
   import {getModal, pushModal} from "@app/modal"
@@ -57,6 +57,11 @@
       // hour-stale cache and make a space the user has since joined look unjoined.
       // Unlike `load`, `forceLoad` doesn't swallow fetch errors, so catch them here —
       // otherwise a failed fetch would leave spacesLoaded false forever.
+      // Num relay fechado a lista de salas e ilegivel ate termos autenticado, e a
+      // recusa e definitiva -- entao perguntar cedo demais responde "nao e
+      // associado" para quem e, e poe a janela de entrada na frente dela de novo.
+      await waitUntilRelayCanAnswer(url)
+
       try {
         await $roomLists.forceLoad(currentPubkey, [url])
       } catch (error) {

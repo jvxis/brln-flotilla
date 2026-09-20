@@ -1,3 +1,4 @@
+import {sleep} from "@welshman/lib"
 import type {ClientOptions} from "@pomade/core"
 import type {Wallet} from "@welshman/util"
 import {nip01, nip07, nip46, nip55, pomade, toSession} from "@welshman/app"
@@ -61,6 +62,10 @@ const readLegacySession = async () => {
 
 // The session is derived from the app's user, so it can't be synced to storage directly —
 // read it back once at startup, then persist it whenever the identity changes.
+// Longo o bastante para um telefone lento e um signer sonolento, curto o bastante
+// para ninguem ficar olhando uma tela em branco sem saber se quebrou.
+const RESTORE_TIMEOUT = 15000
+
 export const restoreSession = async () => {
   // Test-only: when Playwright has injected window.__TEST_SESSION__, that identity wins over
   // whatever is in storage. No-op for real users; stripped from production builds.
@@ -68,7 +73,19 @@ export const restoreSession = async () => {
   const $session = testSession ?? (await ss.get<Session>("session")) ?? (await readLegacySession())
 
   if ($session) {
-    await login($session)
+    // Um signer remoto responde pela rede, ou nao responde: a welshman pede a chave
+    // publica a ele e espera para sempre se nao houver ninguem em casa. Esperar para
+    // sempre aqui significa a interface nunca aparecer, entao desiste depois de um
+    // tempo e deixa o app subir. A sessao fica guardada, e reabrir com o signer
+    // acordado funciona.
+    const restored = await Promise.race([
+      login($session).then(() => true),
+      sleep(RESTORE_TIMEOUT).then(() => false),
+    ])
+
+    if (!restored) {
+      console.warn("The signer did not answer in time; starting without it.")
+    }
   }
 
   // Logging in builds a fresh app, so the test's cached events go into its repository afterwards,
