@@ -26,7 +26,7 @@ import {
 } from "@welshman/app"
 import type {AppPolicy, IApp} from "@welshman/app"
 import {app, logger, appPolicies} from "@app/core"
-import {BLOCKED_RELAYS} from "@app/env"
+import {BLOCKED_RELAYS, PLATFORM_RELAYS} from "@app/env"
 import {userSettingsValues, getSetting, RelayAuthMode} from "@app/settings"
 
 // Relays sending events with empty signatures that the user has to choose to trust
@@ -64,6 +64,14 @@ export const authPolicy = makeAppPolicyAuth((socket, $app) => {
 
   if (!$pubkey) return false
   if ($app.use(BlockedRelayLists).urls($pubkey).get().includes(socket.url)) return false
+
+  // O relay do clube nao serve nada a quem nao autenticou, e todas as regras abaixo
+  // esperam uma lista -- de salas, de relays, de algo ja publicado -- que so chega
+  // depois de autenticar. E um circulo, e no relay fechado ele nunca se fecha: a
+  // sala fica em "Looking for messages..." para sempre. Medido em 20/09/2026, ao
+  // remover este patch e publicar o fork minimo.
+  if (PLATFORM_RELAYS.includes(socket.url)) return true
+
   if (getSetting("relay_auth") === RelayAuthMode.Aggressive) return true
   if ($app.use(RoomLists).urls($pubkey).get().includes(socket.url)) return true
   if ($app.use(RelayLists).urls($pubkey).get().includes(socket.url)) return true
