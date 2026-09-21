@@ -14,7 +14,7 @@ import {
   RELAYS,
   type ManagementResponse,
 } from "@welshman/util"
-import {RelayJoin, RelayLeave, RoomJoin, RoomLeave} from "@welshman/domain"
+import {RelayJoin, RelayLeave, RoomJoin, RoomLeave, displayPubkey} from "@welshman/domain"
 import {Sync, User, publish} from "@welshman/app"
 import {stripPrefix} from "@lib/util"
 import {app, command, relayManagement, roomLists, thunks, writer} from "@app/core"
@@ -241,6 +241,25 @@ const formatAuthError = (status: AuthStatus, details?: string) => {
   return `Failed to authenticate (${message})`
 }
 
+// "Members only" alone strands a member whose chat is logged in with a key other than
+// the one their membership is under. On 21/09/2026 a member had swapped the npub
+// registered in Services while his chat stayed on the old key; the relay said "you are
+// not a member of this relay" to every request, and all he read was this message and
+// "Connection Status: Error", for half an hour. Naming the key in use is what tells a
+// member the problem is the key, and tells anyone else which key to register.
+const membersOnly = () => {
+  const pubkey = app.get().user?.pubkey
+
+  if (!pubkey) {
+    return "This space is for members only"
+  }
+
+  return (
+    `This space is for members only, and you are logged in as ${displayPubkey(pubkey)}, ` +
+    `which is not a member. If your membership is under another key, log in with that key.`
+  )
+}
+
 // The socket authenticated before the relay admitted this pubkey, so it stays
 // restricted on its current connection, and its refused subscriptions are gone.
 // Closing is enough: the socket reopens on its own and authenticates as a member.
@@ -292,9 +311,7 @@ export const attemptRelayAccess = async (url: string, claim = "") => {
 
   // A space that isn't open to the public refuses a join carrying no claim at all
   if (error.includes("claim")) {
-    return PLATFORM_ACCESS_URL
-      ? "This space is for members only"
-      : "This space requires an invite code"
+    return PLATFORM_ACCESS_URL ? membersOnly() : "This space requires an invite code"
   }
 
   const remaining = stripPrefix(error)
