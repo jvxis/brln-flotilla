@@ -41,8 +41,8 @@
     </ModalHeader>
     {#if problem === "no-address"}
       <p>
-        Zapping <ProfileLink {pubkey} class="text-primary!" /> isn't possible because they haven't
-        set up a Lightning address yet.
+        Zapping <ProfileLink {pubkey} class="text-primary!" /> isn't possible because they haven't set
+        up a Lightning address yet.
       </p>
     {:else if problem === "no-nostr"}
       <p>

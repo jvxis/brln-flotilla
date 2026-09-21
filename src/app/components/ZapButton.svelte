@@ -38,7 +38,10 @@
     loading = true
 
     try {
-      const zapper = await Promise.race([zapperPromise, sleep(LOOKUP_TIMEOUT).then(() => "timeout" as const)])
+      const zapper = await Promise.race([
+        zapperPromise,
+        sleep(LOOKUP_TIMEOUT).then(() => "timeout" as const),
+      ])
 
       if (zapper === "timeout") {
         return explain("unreachable")
