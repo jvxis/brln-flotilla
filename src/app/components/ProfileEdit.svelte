@@ -1,4 +1,6 @@
 <script lang="ts">
+  import {PublishStatus} from "@welshman/net"
+  import {displayRelayUrl} from "@welshman/util"
   import AltArrowLeft from "@assets/icons/alt-arrow-left.svg?dataurl"
   import {errorMessage} from "@lib/util"
   import Icon from "@lib/components/Icon.svelte"
@@ -19,15 +21,31 @@
 
     try {
       const command = await $profiles.update(writer => writer.update(profile))
-      const error = await command.publish().waitForError()
+      const thunk = command.publish()
 
-      if (error) {
+      // waitForError resolves on the first relay that refuses, before the others answer.
+      // A member's write relays often include a paid one that refuses anyone who hasn't
+      // signed up with it, and on 20/09/2026 that read as "Failed to update your profile:
+      // restricted: sign up at nostr.wine" while the profile had been saved everywhere
+      // else, the club's relay included. Wait for every relay, and fail only when none
+      // took it.
+      await thunk.waitForCompletion()
+
+      const saved = thunk.getUrlsWithStatus(PublishStatus.Success)
+      const refused = thunk.getFailedUrls()
+
+      if (saved.length === 0) {
         pushToast({
           theme: "error",
-          message: `Failed to update your profile: ${errorMessage(error)}`,
+          message: `Failed to update your profile: ${errorMessage(thunk.getError() || "no relay accepted it")}`,
         })
       } else {
-        pushToast({message: "Your profile has been updated!"})
+        pushToast({
+          message:
+            refused.length === 0
+              ? "Your profile has been updated!"
+              : `Your profile has been updated. Some relays refused it: ${refused.map(displayRelayUrl).join(", ")}`,
+        })
         clearModals()
       }
     } finally {
