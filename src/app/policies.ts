@@ -65,11 +65,12 @@ export const authPolicy = makeAppPolicyAuth((socket, $app) => {
   if (!$pubkey) return false
   if ($app.use(BlockedRelayLists).urls($pubkey).get().includes(socket.url)) return false
 
-  // O relay do clube nao serve nada a quem nao autenticou, e todas as regras abaixo
-  // esperam uma lista -- de salas, de relays, de algo ja publicado -- que so chega
-  // depois de autenticar. E um circulo, e no relay fechado ele nunca se fecha: a
-  // sala fica em "Looking for messages..." para sempre. Medido em 20/09/2026, ao
-  // remover este patch e publicar o fork minimo.
+  // The club's space is the relay this build exists for, and it serves nothing to a
+  // client that has not authenticated. Every other rule below waits for a list that
+  // is itself read from the relay or from the local cache, so on a first load — or
+  // in a browser that keeps no cache — nobody authenticated, the room came back
+  // empty, and messages only appeared after leaving the room and returning, which
+  // re-subscribes once publishing something had forced the authentication.
   if (PLATFORM_RELAYS.includes(socket.url)) return true
 
   if (getSetting("relay_auth") === RelayAuthMode.Aggressive) return true
