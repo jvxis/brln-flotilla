@@ -1,6 +1,12 @@
+<script module lang="ts">
+  // Why a zap can't go through. The three read differently to a member, and only the
+  // first is about the recipient having nothing set up: a failed lookup says nothing
+  // about their wallet, and an address without Nostr zaps can still be paid directly.
+  export type ZapperProblem = "no-address" | "no-nostr" | "unreachable"
+</script>
+
 <script lang="ts">
-  import {removeUndefined} from "@welshman/lib"
-  import {Zappers} from "@welshman/app"
+  import {Profiles} from "@welshman/app"
   import AltArrowLeft from "@assets/icons/alt-arrow-left.svg?dataurl"
   import Icon from "@lib/components/Icon.svelte"
   import Button from "@lib/components/Button.svelte"
@@ -15,11 +21,15 @@
   type Props = {
     url?: string
     pubkey: string
+    problem: ZapperProblem
   }
 
-  const {url, pubkey}: Props = $props()
+  const {pubkey, problem}: Props = $props()
 
-  const zapper = $app.use(Zappers).forPubkey(pubkey, removeUndefined([url])).$
+  // The address as the member typed it in their profile, so whoever is zapping can
+  // still pay it from a wallet when the chat can't.
+  const values = $app.use(Profiles).get(pubkey)?.values as Record<string, unknown> | undefined
+  const address = typeof values?.lud16 === "string" ? values.lud16 : undefined
 
   const back = () => history.back()
 </script>
@@ -29,14 +39,24 @@
     <ModalHeader>
       <ModalTitle>Unable to Zap</ModalTitle>
     </ModalHeader>
-    <p>
-      Zapping <ProfileLink {pubkey} class="text-primary!" /> isn't possible right now because
-      {#if $zapper}
-        their zap receiver isn't correctly set up.
-      {:else}
-        they don't currently have a zap receiver set up.
-      {/if}
-    </p>
+    {#if problem === "no-address"}
+      <p>
+        Zapping <ProfileLink {pubkey} class="text-primary!" /> isn't possible because they haven't
+        set up a Lightning address yet.
+      </p>
+    {:else if problem === "no-nostr"}
+      <p>
+        <ProfileLink {pubkey} class="text-primary!" /> has a Lightning address{#if address}, <strong
+            >{address}</strong
+          >{/if}, but it didn't confirm that it accepts Nostr zaps, so a zap here couldn't show up
+        in the chat. You can still pay that address from your wallet.
+      </p>
+    {:else}
+      <p>
+        We couldn't check <ProfileLink {pubkey} class="text-primary!" />'s Lightning address right
+        now. That doesn't mean they can't receive payments &mdash; try again in a moment.
+      </p>
+    {/if}
   </ModalBody>
   <ModalFooter>
     <Button class="button button-link" onclick={back}>
