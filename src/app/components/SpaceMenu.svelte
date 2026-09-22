@@ -1,8 +1,7 @@
 <script lang="ts">
-  import SecondaryNavHeader from "@lib/components/SecondaryNavHeader.svelte"
   import SecondaryNavSection from "@lib/components/SecondaryNavSection.svelte"
   import SpaceMenuHeader from "@app/components/SpaceMenuHeader.svelte"
-  import SpaceMenuNavItems from "@app/components/SpaceMenuNavItems.svelte"
+  import SpaceMenuNavSection from "@app/components/SpaceMenuNavSection.svelte"
   import SpaceMenuRooms from "@app/components/SpaceMenuRooms.svelte"
   import Link from "@lib/components/Link.svelte"
   import SocketStatusIndicator from "@app/components/SocketStatusIndicator.svelte"
@@ -24,8 +23,7 @@
       </div>
       <div class="space-menu__scroll flex flex-col -mt-12 pt-12 -mb-8 pb-8">
         <div class="card space-menu__card flex flex-col gap-1">
-          <SecondaryNavHeader>Space</SecondaryNavHeader>
-          <SpaceMenuNavItems {url} />
+          <SpaceMenuNavSection {url} />
         </div>
         <SpaceMenuRooms {url} mobile />
       </div>
@@ -42,7 +40,7 @@
       </div>
       <div
         class="space-menu__scroll flex min-h-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto py-1">
-        <SpaceMenuNavItems {url} />
+        <SpaceMenuNavSection {url} />
         <SpaceMenuRooms {url} />
         <div class="h-5 shrink-0"></div>
       </div>
