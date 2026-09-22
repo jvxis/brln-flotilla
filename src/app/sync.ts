@@ -1,6 +1,7 @@
 import {page} from "$app/stores"
 import type {Unsubscriber} from "svelte/store"
-import {ago, assoc, call, noop, MONTH, WEEK} from "@welshman/lib"
+import {ago, call, noop, now, poll, sleep, MONTH, WEEK} from "@welshman/lib"
+import {AuthStatus, SocketStatus} from "@welshman/net"
 import type {Maybe} from "@welshman/lib"
 import {
   APP_DATA,
@@ -77,6 +78,137 @@ type SyncOpts = {
   filters: Filter[]
 }
 
+// How many times in a row the live subscription may be lost without the relay ever serving it
+// before we stop asking. Being served resets the count, so a long session that rides out many
+// dropped connections keeps listening.
+const LISTEN_ATTEMPTS = 5
+
+// How far back a subscription reaches from the moment the listener started waiting to ask, so
+// that nothing published around that moment goes missing.
+const LISTEN_OVERLAP = 60
+
+// A refusal that only says we asked before authenticating. `auth-required` is the one the relay
+// sends; `restricted` is what a closed relay answers to a socket that hasn't authenticated yet,
+// and is only this when the socket really hadn't.
+const isRefusedBeforeAuth = (reason: string, url: string) =>
+  reason.startsWith("auth-required") ||
+  (reason.startsWith("restricted") && app.get().pool.get(url).auth.status !== AuthStatus.Ok)
+
+const withoutLimit = (filter: Filter) => {
+  const copy = {...filter}
+
+  delete copy.limit
+
+  return copy
+}
+
+// Wait until a subscription can be served: the socket open and, where the relay asks for it, the
+// authentication settled. A relay that asks for none never sends a challenge, and after a short
+// wait we go ahead. Nothing here throws, and leaving the space (the signal) ends the wait.
+const waitUntilListenable = async (url: string, signal: AbortSignal) => {
+  const socket = app.get().pool.get(url)
+
+  while (!signal.aborted && socket.status !== SocketStatus.Open) {
+    socket.attemptToOpen()
+
+    await poll({
+      signal: AbortSignal.timeout(5000),
+      condition: () => signal.aborted || socket.status === SocketStatus.Open,
+    })
+  }
+
+  await poll({
+    signal: AbortSignal.timeout(3000),
+    condition: () => signal.aborted || socket.auth.status !== AuthStatus.None,
+  })
+
+  if (socket.auth.status === AuthStatus.None) return
+
+  await poll({
+    signal: AbortSignal.timeout(30_000),
+    condition: () =>
+      signal.aborted ||
+      [AuthStatus.Ok, AuthStatus.Forbidden, AuthStatus.DeniedSignature].includes(
+        socket.auth.status,
+      ),
+  })
+}
+
+// The live half of pullAndListen. It used to ask right away, once, and new messages stopped
+// arriving while the screen kept saying "Connected". Measured in production on 22/09/2026:
+//
+// - Everything the page asks a closed relay before authenticating is refused with
+//   `auth-required`. Welshman hides that refusal from the caller and replays the request after
+//   authenticating, but it only holds on to the last 50 messages (`socketPolicyAuthBuffer`). A
+//   member with a slow signer sent about 70; the live request went out among the first, fell off
+//   the buffer and was never sent again -- and, the refusal being hidden, nothing here knew.
+// - A socket that drops comes back without the subscriptions it carried.
+//
+// So the listener waits for the socket to authenticate before asking, reaching back to when it
+// started waiting so nothing published meanwhile is missed, and asks again the same way whenever
+// the subscription is lost.
+const listen = ({url, signal, filters}: SyncOpts) => {
+  let failures = 0
+
+  const subscribe = (since: number) => {
+    if (signal.aborted) return
+
+    const controller = new AbortController()
+    const abort = () => controller.abort()
+    let lost = false
+
+    signal.addEventListener("abort", abort)
+
+    const resubscribe = () => {
+      if (lost || signal.aborted) return
+
+      lost = true
+      failures += 1
+
+      signal.removeEventListener("abort", abort)
+      controller.abort()
+
+      if (failures <= LISTEN_ATTEMPTS) {
+        start(1000)
+      }
+    }
+
+    network.get().request({
+      relays: [url],
+      signal: controller.signal,
+      filters: unionFilters(
+        filters.map(filter => ({
+          ...withoutLimit(filter),
+          since: Math.max(filter.since || 0, since),
+        })),
+      ),
+      onEose: () => {
+        failures = 0
+      },
+      onClosed: reason => {
+        if (isRefusedBeforeAuth(reason, url)) {
+          resubscribe()
+        }
+      },
+      onDisconnect: resubscribe,
+    })
+  }
+
+  const start = async (delay = 0) => {
+    const since = now() - LISTEN_OVERLAP
+
+    if (delay) {
+      await sleep(delay)
+    }
+
+    await waitUntilListenable(url, signal)
+
+    subscribe(since)
+  }
+
+  start()
+}
+
 const pullAndListen = ({url, signal, filters}: SyncOpts) => {
   if (signal.aborted) return
 
@@ -84,11 +216,8 @@ const pullAndListen = ({url, signal, filters}: SyncOpts) => {
     .get()
     .use(Sync)
     .pull({relays: [url], filters})
-  network.get().request({
-    relays: [url],
-    signal,
-    filters: unionFilters(filters.map(assoc("limit", 0))),
-  })
+
+  listen({url, signal, filters})
 }
 
 const userRoomList = deriveUserItem(RoomLists)
