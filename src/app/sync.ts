@@ -435,12 +435,20 @@ const syncSpace = (url: string) => {
 
   // Which sections a space offers is a question about its whole history rather than about the
   // recent window above — a space whose newest poll is a year old still has polls. One event
-  // per kind answers it.
-  network.get().load({
-    relays: [url],
-    signal: controller.signal,
-    filters: CONTENT_KINDS.map(kind => ({kinds: [kind], limit: 1})),
-  })
+  // per kind answers it. Like everything else here it waits for the socket to authenticate:
+  // a closed relay refuses what it is asked before that, and the refusal is hidden from the
+  // caller by the auth buffer, so the answer simply never comes.
+  void (async () => {
+    await waitUntilListenable(url, controller.signal)
+
+    if (controller.signal.aborted) return
+
+    network.get().load({
+      relays: [url],
+      signal: controller.signal,
+      filters: CONTENT_KINDS.map(kind => ({kinds: [kind], limit: 1})),
+    })
+  })()
 
   return () => controller.abort()
 }
