@@ -199,9 +199,9 @@ const listen = ({url, signal, filters}: SyncOpts) => {
 
     if (delay) {
       await sleep(delay)
-    }
 
-    await waitUntilListenable(url, signal)
+      await waitUntilListenable(url, signal)
+    }
 
     subscribe(since)
   }
@@ -209,7 +209,18 @@ const listen = ({url, signal, filters}: SyncOpts) => {
   start()
 }
 
-const pullAndListen = ({url, signal, filters}: SyncOpts) => {
+// Everything a closed relay is asked before the socket authenticates is refused with
+// `auth-required`. Welshman hides that refusal and replays the request after the OK, but it
+// only keeps the last 50 messages (`socketPolicyAuthBuffer`), and a space with a few rooms
+// and a slow signer sends more than that: whatever fell off the buffer is simply lost, with
+// no error anywhere. That cost the live subscription (fixed in 0.1.24) and is the likely
+// reason a room list sometimes only shows up on a second reload. So the space waits for the
+// socket to be able to answer before asking anything of it.
+const pullAndListen = async ({url, signal, filters}: SyncOpts) => {
+  if (signal.aborted) return
+
+  await waitUntilListenable(url, signal)
+
   if (signal.aborted) return
 
   app
