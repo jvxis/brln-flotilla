@@ -8,7 +8,12 @@ import {app, login, session} from "@app/core"
 import {wallet} from "@app/lightning"
 import {kv, ss, storage} from "@app/storage"
 import {deactivateCurrentPomadeSession} from "@app/pomade"
+import {useRemoteSignerWatch} from "@app/remoteSigner"
 import {Push} from "@app/push"
+
+// Registered before any session is restored, so a remote signer session gets the watched
+// broker rather than the stock one.
+useRemoteSignerWatch()
 
 // Sessions used to be a Record<pubkey, session> keyed by an active pubkey, and carried their
 // pubkey plus method-specific fields inline. Convert one so upgrading doesn't log people out.
