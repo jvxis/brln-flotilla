@@ -18,7 +18,8 @@
   import PinboardSelect from "@app/components/PinboardSelect.svelte"
   import EventDeleteConfirm from "@app/components/EventDeleteConfirm.svelte"
   import ThreadCreate from "@app/components/ThreadCreate.svelte"
-  import {app, relayManagement, roomPinLists, user} from "@app/core"
+  import {Pinboards} from "@welshman/app"
+  import {app, relayManagement, relays, roomPinLists, user} from "@app/core"
   import {deriveUserIsSpaceAdmin} from "@app/management"
   import {ROOM, deriveUserIsRoomAdmin} from "@app/rooms"
   import {shareEvent} from "@app/share"
@@ -37,6 +38,13 @@
   const h = tagValue(tagSpec(ROOM), event.tags) ?? ""
   const pinIds = $roomPinLists.pins(url, h).$
   const userIsAdmin = deriveUserIsSpaceAdmin(url)
+
+  // A shelf tagged "collaborative" takes links from anyone in the space, so the action is
+  // offered to members too -- on a curated shelf only an admin can ask the relay to sign.
+  const spaceRelay = $relays.one(url)
+  const spaceBoards = $derived($app.use(Pinboards).forAuthor($spaceRelay?.self ?? "").$)
+  const spaceTakesLinks = $derived($spaceBoards.some(board => board.collaborative()))
+
   const userIsRoomAdmin = deriveUserIsRoomAdmin(url, h)
   const isPinned = $derived($pinIds.includes(event.id))
 
@@ -129,7 +137,7 @@
       Share
     </Button>
   </li>
-  {#if $userIsAdmin}
+  {#if $userIsAdmin || spaceTakesLinks}
     <li>
       <Button onclick={addToLibrary}>
         <Icon size={4} icon={GalleryWide} />

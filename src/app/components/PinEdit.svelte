@@ -1,9 +1,9 @@
 <script lang="ts">
   import {Pin} from "@welshman/domain"
-  import {publishAsRelay} from "@welshman/app"
+  import {publishAsRelay, publishToRelays} from "@welshman/app"
   import type {PinReader} from "@welshman/domain"
   import PinForm, {type PinFormValues} from "@app/components/PinForm.svelte"
-  import {command, writer} from "@app/core"
+  import {command, user, writer} from "@app/core"
   import {pinToReference, setPinReference} from "@app/pinboards"
 
   type Props = {
@@ -22,7 +22,11 @@
 
     eventWriter.setTitle(title).setTopics(topics).setContent(content)
 
-    const thunk = await command(eventWriter).then(publishAsRelay(url))
+    // A link on a collaborative shelf belongs to whoever added it, and is replaced with
+    // that same key; the relay-signed ones stay with the relay.
+    const thunk = await command(eventWriter).then(
+      pin.author() === $user?.pubkey ? publishToRelays([url]) : publishAsRelay(url),
+    )
 
     return thunk.waitForError()
   }

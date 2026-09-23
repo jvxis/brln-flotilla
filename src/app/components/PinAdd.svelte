@@ -1,8 +1,8 @@
 <script lang="ts">
   import {Pin} from "@welshman/domain"
-  import {publishAsRelay} from "@welshman/app"
+  import {Pinboards, publishAsRelay, publishToRelays} from "@welshman/app"
   import PinForm, {type PinFormValues} from "@app/components/PinForm.svelte"
-  import {command, writer} from "@app/core"
+  import {app, command, writer} from "@app/core"
   import {setPinReference} from "@app/pinboards"
 
   type Props = {
@@ -12,6 +12,14 @@
   }
 
   const {url, address, reference}: Props = $props()
+
+  // A shelf tagged "collaborative" takes links from anyone in the space, each signed by
+  // whoever added it. That is what lets a member add a link and still be the only one who
+  // can change or remove it: a link is replaceable per author, so nobody can touch someone
+  // else's. A curated shelf keeps the old behaviour, where the relay signs it and only an
+  // admin of the space may ask for that.
+  const board = $derived($app.use(Pinboards).get(address))
+  const collaborative = $derived(Boolean(board?.collaborative()))
 
   const refusalMessage = (error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
@@ -37,7 +45,9 @@
     // a refusal thrown from publishAsRelay, and before this it was never caught -- the
     // button simply spun forever (reported by a member on 23/09/2026).
     try {
-      const thunk = await command(eventWriter).then(publishAsRelay(url))
+      const thunk = collaborative
+        ? await command(eventWriter).then(publishToRelays([url]))
+        : await command(eventWriter).then(publishAsRelay(url))
 
       return thunk.waitForError()
     } catch (error) {
