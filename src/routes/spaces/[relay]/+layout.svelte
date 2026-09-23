@@ -18,7 +18,7 @@
   import SpaceJoin from "@app/components/SpaceJoin.svelte"
   import SpaceRedirect from "@app/components/SpaceRedirect.svelte"
   import {deriveRelayAuthError, waitUntilRelayCanAnswer} from "@app/access"
-  import {relays, roomLists, user} from "@app/core"
+  import {relayMemberLists, relays, roomLists, user} from "@app/core"
   import {deriveUserIsRelayMember, userSpaceUrls} from "@app/rooms"
   import {getModal, pushModal} from "@app/modal"
   import {relaysPendingTrust} from "@app/policies"
@@ -68,6 +68,15 @@
         await $roomLists.forceLoad(currentPubkey, [url])
       } catch (error) {
         console.warn(`Failed to load room list for ${currentPubkey}`, error)
+      }
+
+      // The relay's own member list decides whether this person is already in the space,
+      // so the prompt must not be answered before it has arrived -- otherwise a member
+      // sees "Join Space" whenever the list happens to be slower than the page.
+      try {
+        await relayMemberLists.get().fetch(url)
+      } catch (error) {
+        console.warn(`Failed to load the member list of ${url}`, error)
       }
     }
 
