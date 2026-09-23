@@ -13,6 +13,16 @@
 
   const {url, address, reference}: Props = $props()
 
+  const refusalMessage = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (/unauthorized|restricted|not allowed|forbidden/i.test(message)) {
+      return "Only admins of this space can add to the Library. Share the link in a room and an admin can add it."
+    }
+
+    return message || "The relay did not add this link."
+  }
+
   const submit = async ({title, topics, value, content}: PinFormValues) => {
     const eventWriter = writer(Pin).setIdentifier().addBoard(address)
 
@@ -22,9 +32,17 @@
 
     eventWriter.setTitle(title).setTopics(topics).setContent(content)
 
-    const thunk = await command(eventWriter).then(publishAsRelay(url))
+    // The library is curated: an item is published with the relay's own key, through the
+    // NIP-86 `signevent` method, which only an admin of the space may use. Anyone else gets
+    // a refusal thrown from publishAsRelay, and before this it was never caught -- the
+    // button simply spun forever (reported by a member on 23/09/2026).
+    try {
+      const thunk = await command(eventWriter).then(publishAsRelay(url))
 
-    return thunk.waitForError()
+      return thunk.waitForError()
+    } catch (error) {
+      return refusalMessage(error)
+    }
   }
 </script>
 

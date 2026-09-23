@@ -83,12 +83,14 @@
       </Button>
     </li>
   {/if}
-  <li>
-    <Button onclick={addToLibrary}>
-      <Icon size={4} icon={GalleryWide} />
-      Add to Library
-    </Button>
-  </li>
+  {#if $userIsAdmin}
+    <li>
+      <Button onclick={addToLibrary}>
+        <Icon size={4} icon={GalleryWide} />
+        Add to Library
+      </Button>
+    </li>
+  {/if}
   {@render customActions?.()}
   {#if event.pubkey === $user.pubkey}
     <li>

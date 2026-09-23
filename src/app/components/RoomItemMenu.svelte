@@ -129,12 +129,14 @@
       Share
     </Button>
   </li>
-  <li>
-    <Button onclick={addToLibrary}>
-      <Icon size={4} icon={GalleryWide} />
-      Add to Library
-    </Button>
-  </li>
+  {#if $userIsAdmin}
+    <li>
+      <Button onclick={addToLibrary}>
+        <Icon size={4} icon={GalleryWide} />
+        Add to Library
+      </Button>
+    </li>
+  {/if}
   <li>
     <Button onclick={read}>
       <Icon size={4} icon={VolumeLoud} />
