@@ -25,6 +25,7 @@ import {
   ROOM_META,
   ROOM_PINS,
   ROOM_REMOVE_MEMBER,
+  ROOMS,
   WRAP,
   outbox,
   unionFilters,
@@ -339,6 +340,19 @@ const syncUserData = () => {
       blockedRelayLists.get().load($pubkey)
       followLists.get().load($pubkey)
       roomLists.get().load($pubkey)
+
+      // The room list (kind 10009) is what says whether this person has already joined a
+      // space, and the plugin above only looks for it on the author's own write relays. In a
+      // closed club it lives on the club's relay, which nobody asks: a fresh browser of
+      // someone who is already in the space is shown "Join Space" again, with the room left
+      // empty behind it (reproduced in every e2e run since 20/09/2026). So ask the space's
+      // own relay for it too.
+      if (PLATFORM_RELAYS.length > 0) {
+        network.get().load({
+          relays: PLATFORM_RELAYS,
+          filters: [{kinds: [ROOMS], authors: [$pubkey]}],
+        })
+      }
       muteLists.get().load($pubkey)
       profiles.get().load($pubkey)
       app.get().use(Settings).load($pubkey)
