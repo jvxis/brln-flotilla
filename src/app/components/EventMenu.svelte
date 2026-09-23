@@ -19,7 +19,8 @@
   import {deriveUserIsSpaceAdmin} from "@app/management"
   import {pushModal} from "@app/modal"
   import {pushToast} from "@app/toast"
-  import {app, relayManagement, user} from "@app/core"
+  import {Pinboards} from "@welshman/app"
+  import {app, relayManagement, relays, user} from "@app/core"
 
   type Props = {
     url: string
@@ -33,6 +34,12 @@
 
   const isRoot = event.kind !== COMMENT
   const userIsAdmin = deriveUserIsSpaceAdmin(url)
+
+  // A shelf tagged "collaborative" takes links from anyone in the space, so the action is
+  // offered to members too -- on a curated shelf only an admin can ask the relay to sign.
+  const spaceRelay = $relays.one(url)
+  const spaceBoards = $derived($app.use(Pinboards).forAuthor($spaceRelay?.self ?? "").$)
+  const spaceTakesLinks = $derived($spaceBoards.some(board => board.collaborative()))
 
   const report = () => pushModal(Report, {url, event})
 
@@ -83,7 +90,7 @@
       </Button>
     </li>
   {/if}
-  {#if $userIsAdmin}
+  {#if $userIsAdmin || spaceTakesLinks}
     <li>
       <Button onclick={addToLibrary}>
         <Icon size={4} icon={GalleryWide} />

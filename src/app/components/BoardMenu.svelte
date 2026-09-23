@@ -80,13 +80,15 @@
       Share to chat
     </Button>
   </li>
-  {#if $canManage}
+  {#if $canManage || board.collaborative()}
     <li>
       <Button onclick={addLink}>
         <Icon icon={AddCircle} />
         Add link
       </Button>
     </li>
+  {/if}
+  {#if $canManage}
     <li>
       <Button onclick={edit}>
         <Icon icon={Pen} />

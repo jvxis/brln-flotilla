@@ -11,7 +11,7 @@
   import Confirm from "@lib/components/Confirm.svelte"
   import EventInfo from "@app/components/EventInfo.svelte"
   import PinEdit from "@app/components/PinEdit.svelte"
-  import {deletes} from "@app/core"
+  import {deletes, user} from "@app/core"
   import {deriveUserIsSpaceAdmin} from "@app/management"
   import {shareEvent} from "@app/share"
   import {pushModal} from "@app/modal"
@@ -27,6 +27,11 @@
 
   const canManage = deriveUserIsSpaceAdmin(url)
 
+  // On a collaborative shelf a link is signed by whoever added it, and only that person can
+  // replace or delete it -- the relay enforces that by itself, since a link is replaceable
+  // per author. So the menu offers those actions to the owner as well as to an admin.
+  const isOwn = $derived(pin.author() === $user?.pubkey)
+
   const showInfo = () => pushModal(EventInfo, {url, event: pin.event})
 
   const share = () => shareEvent(url, "Link", pin.event)
@@ -36,7 +41,9 @@
   const deletePin = async () => {
     try {
       const command = await $deletes.deleteEvent(pin.event)
-      const error = await command.publishAsRelay(url).then(thunk => thunk.waitForError())
+      const thunk = isOwn ? await command.publishToRelays([url]) : await command.publishAsRelay(url)
+
+      const error = await thunk.waitForError()
 
       if (error) {
         pushToast({theme: "error", message: error})
@@ -76,7 +83,7 @@
       Share to chat
     </Button>
   </li>
-  {#if $canManage}
+  {#if $canManage || isOwn}
     <li>
       <Button onclick={edit}>
         <Icon icon={Pen} />

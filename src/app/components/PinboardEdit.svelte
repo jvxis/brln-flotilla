@@ -33,7 +33,10 @@
     loading = true
 
     try {
-      const eventWriter = writer(Pinboard, board).setTitle(title).setDescription(description)
+      const eventWriter = writer(Pinboard, board)
+        .setTitle(title)
+        .setDescription(description)
+        .setCollaborative(collaborative)
 
       if (!board) {
         eventWriter.setIdentifier()
@@ -59,6 +62,7 @@
     }
   }
 
+  let collaborative = $state(board?.collaborative() ?? false)
   let title = $state(board?.title() ?? "")
   let description = $state(board?.description() ?? "")
   let loading = $state(false)
@@ -89,6 +93,12 @@
           placeholder="What's this shelf about?" />
       {/snippet}
     </Field>
+    <div class="flex items-center gap-2">
+      <input id="collaborative" type="checkbox" class="checkbox" bind:checked={collaborative} />
+      <label for="collaborative" class="text-sm opacity-75">
+        Anyone in the space can add links to this shelf, and edit or remove their own
+      </label>
+    </div>
   </ModalBody>
   <ModalFooter>
     <Button class="button button-link" onclick={back}>
