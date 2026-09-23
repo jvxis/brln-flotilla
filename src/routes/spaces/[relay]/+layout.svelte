@@ -19,7 +19,7 @@
   import SpaceRedirect from "@app/components/SpaceRedirect.svelte"
   import {deriveRelayAuthError, waitUntilRelayCanAnswer} from "@app/access"
   import {relays, roomLists, user} from "@app/core"
-  import {userSpaceUrls} from "@app/rooms"
+  import {deriveUserIsRelayMember, userSpaceUrls} from "@app/rooms"
   import {getModal, pushModal} from "@app/modal"
   import {relaysPendingTrust} from "@app/policies"
   import {decodeRelay} from "@app/relays"
@@ -29,6 +29,8 @@
   const {children, params}: LayoutProps = $props()
 
   const url = decodeRelay(params.relay)
+
+  const userIsRelayMember = deriveUserIsRelayMember(url)
 
   const authError = deriveRelayAuthError(url)
 
@@ -87,7 +89,7 @@
     if (redirectUrl && redirectUrl !== url && !redirectPrompted.has(url)) {
       redirectPrompted.add(url)
       pushModal(SpaceRedirect, {url, newUrl: redirectUrl})
-    } else if (!$userSpaceUrls.includes(url) && !joinPrompted.has(url)) {
+    } else if (!$userSpaceUrls.includes(url) && !$userIsRelayMember && !joinPrompted.has(url)) {
       if (spacesLoaded) {
         joinPrompted.add(url)
         pushModal(SpaceJoin, {url})
