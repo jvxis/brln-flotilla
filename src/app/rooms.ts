@@ -164,6 +164,17 @@ export const userSpaceUrls = derived(
     ($userRoomList?.urls() ?? []).filter(url => !$locallyLeftSpaceUrls.includes(url)),
 )
 
+// Whether the space's own relay lists this person as a member. In a club whose relay decides
+// who gets in, that list is the authority on "am I in this space?" -- the user's own room list
+// (kind 10009) only says which spaces they chose to keep in their sidebar, and a member who
+// never went through the join flow, or who opens a fresh browser, simply has none. Asking that
+// person to join again, with the room left empty behind the prompt, is what the e2e has
+// reproduced in every run since 20/09/2026.
+export const deriveUserIsRelayMember = (url: string) =>
+  derived([user, relayMemberLists.get().forUrl(url)], ([$user, $members]) =>
+    Boolean($user?.pubkey && $members?.isMember($user.pubkey)),
+  )
+
 // Spaces get reordered from lists that show only some of them, so the urls given here go back
 // in the slots the ones they replace occupied.
 export const reorderSpaceUrls = (urls: string[]) => {

@@ -25,6 +25,7 @@ import {
   ROOM_META,
   ROOM_PINS,
   ROOM_REMOVE_MEMBER,
+  ROOMS,
   WRAP,
   outbox,
   unionFilters,
@@ -339,6 +340,19 @@ const syncUserData = () => {
       blockedRelayLists.get().load($pubkey)
       followLists.get().load($pubkey)
       roomLists.get().load($pubkey)
+
+      // The room list (kind 10009) is what says whether this person has already joined a
+      // space, and the plugin above only looks for it on the author's own write relays. In a
+      // closed club it lives on the club's relay, which nobody asks: a fresh browser of
+      // someone who is already in the space is shown "Join Space" again, with the room left
+      // empty behind it (reproduced in every e2e run since 20/09/2026). So ask the space's
+      // own relay for it too.
+      if (PLATFORM_RELAYS.length > 0) {
+        network.get().load({
+          relays: PLATFORM_RELAYS,
+          filters: [{kinds: [ROOMS], authors: [$pubkey]}],
+        })
+      }
       muteLists.get().load($pubkey)
       profiles.get().load($pubkey)
       app.get().use(Settings).load($pubkey)
@@ -421,12 +435,20 @@ const syncSpace = (url: string) => {
 
   // Which sections a space offers is a question about its whole history rather than about the
   // recent window above — a space whose newest poll is a year old still has polls. One event
-  // per kind answers it.
-  network.get().load({
-    relays: [url],
-    signal: controller.signal,
-    filters: CONTENT_KINDS.map(kind => ({kinds: [kind], limit: 1})),
-  })
+  // per kind answers it. Like everything else here it waits for the socket to authenticate:
+  // a closed relay refuses what it is asked before that, and the refusal is hidden from the
+  // caller by the auth buffer, so the answer simply never comes.
+  void (async () => {
+    await waitUntilListenable(url, controller.signal)
+
+    if (controller.signal.aborted) return
+
+    network.get().load({
+      relays: [url],
+      signal: controller.signal,
+      filters: CONTENT_KINDS.map(kind => ({kinds: [kind], limit: 1})),
+    })
+  })()
 
   return () => controller.abort()
 }

@@ -18,8 +18,8 @@
   import SpaceJoin from "@app/components/SpaceJoin.svelte"
   import SpaceRedirect from "@app/components/SpaceRedirect.svelte"
   import {deriveRelayAuthError, waitUntilRelayCanAnswer} from "@app/access"
-  import {relays, roomLists, user} from "@app/core"
-  import {userSpaceUrls} from "@app/rooms"
+  import {relayMemberLists, relays, roomLists, user} from "@app/core"
+  import {deriveUserIsRelayMember, userSpaceUrls} from "@app/rooms"
   import {getModal, pushModal} from "@app/modal"
   import {relaysPendingTrust} from "@app/policies"
   import {decodeRelay} from "@app/relays"
@@ -29,6 +29,8 @@
   const {children, params}: LayoutProps = $props()
 
   const url = decodeRelay(params.relay)
+
+  const userIsRelayMember = deriveUserIsRelayMember(url)
 
   const authError = deriveRelayAuthError(url)
 
@@ -67,6 +69,15 @@
       } catch (error) {
         console.warn(`Failed to load room list for ${currentPubkey}`, error)
       }
+
+      // The relay's own member list decides whether this person is already in the space,
+      // so the prompt must not be answered before it has arrived -- otherwise a member
+      // sees "Join Space" whenever the list happens to be slower than the page.
+      try {
+        await relayMemberLists.get().fetch(url)
+      } catch (error) {
+        console.warn(`Failed to load the member list of ${url}`, error)
+      }
     }
 
     spacesLoaded = true
@@ -87,7 +98,7 @@
     if (redirectUrl && redirectUrl !== url && !redirectPrompted.has(url)) {
       redirectPrompted.add(url)
       pushModal(SpaceRedirect, {url, newUrl: redirectUrl})
-    } else if (!$userSpaceUrls.includes(url) && !joinPrompted.has(url)) {
+    } else if (!$userSpaceUrls.includes(url) && !$userIsRelayMember && !joinPrompted.has(url)) {
       if (spacesLoaded) {
         joinPrompted.add(url)
         pushModal(SpaceJoin, {url})

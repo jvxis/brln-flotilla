@@ -12,6 +12,7 @@ import {
   MESSAGING_RELAYS,
   PROFILE,
   RELAYS,
+  ROOMS,
   type ManagementResponse,
 } from "@welshman/util"
 import {RelayJoin, RelayLeave, RoomJoin, RoomLeave, displayPubkey} from "@welshman/domain"
@@ -404,7 +405,10 @@ export class Access {
         relays: [this.url],
         filters: [
           {
-            kinds: [RELAYS, MESSAGING_RELAYS, FOLLOWS, PROFILE],
+            // ROOMS (kind 10009) is what tells a later browser that this person is already
+            // in the space. Without it here, only the author's own write relays carry it,
+            // and a fresh browser of a member is shown "Join Space" again.
+            kinds: [RELAYS, MESSAGING_RELAYS, FOLLOWS, PROFILE, ROOMS],
             authors: [User.require(app.get()).pubkey],
           },
         ],
