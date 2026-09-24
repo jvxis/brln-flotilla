@@ -84,7 +84,10 @@ export const makeEditor = async ({
       return (term: string) => {
         const matches = $profileSearch.searchValues(term)
 
-        if (memberPubkeys.size === 0) return matches
+        // Outside a space -- a direct message -- there is no list to filter by. Inside one the
+        // list decides even while it is still loading: offering nobody for a moment is better
+        // than offering the wrong people.
+        if (!url) return matches
 
         return matches.filter(pubkey => memberPubkeys.has(pubkey))
       }

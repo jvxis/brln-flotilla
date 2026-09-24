@@ -16,9 +16,17 @@
   import {CONTENT_KINDS} from "@app/content"
   import {app, relays, searchRelayLists, user, userSearchRelayUrls} from "@app/core"
   import {pushModal} from "@app/modal"
-  import {userSpaceUrls} from "@app/rooms"
+  import {deriveUserSpaceMembers, userSpaceUrls} from "@app/rooms"
 
   const filter = {kinds: [MESSAGE, ...CONTENT_KINDS]}
+
+  // This search reaches further than the spaces it names: for people it queries the search
+  // relays and keeps whatever comes back, which in a closed club means strangers from the open
+  // network. So the people it offers are the members of the spaces being searched. Someone who
+  // is in no space has no list to filter by, and then nothing is filtered.
+  const spaceMembers = deriveUserSpaceMembers()
+
+  const members = $derived($userSpaceUrls.length > 0 ? $spaceMembers : undefined)
 
   const getSpaceUrl = (event: TrustedEvent) =>
     $userSpaceUrls.find(url => $app.tracker.getRelays(event.id).has(url))
@@ -39,7 +47,7 @@
     <ModalTitle>Search</ModalTitle>
     <ModalSubtitle>across all your spaces</ModalSubtitle>
   </ModalHeader>
-  <SearchBody placeholder="Search your spaces..." relays={$userSpaceUrls} {filter}>
+  <SearchBody placeholder="Search your spaces..." relays={$userSpaceUrls} {filter} {members}>
     {#snippet empty()}
       {@const spaces = $userSpaceUrls.length}
       {@const extras = $userSearchRelayUrls.length}

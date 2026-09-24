@@ -175,6 +175,16 @@ export const deriveUserIsRelayMember = (url: string) =>
     Boolean($user?.pubkey && $members?.isMember($user.pubkey)),
   )
 
+// Everyone listed as a member of any space this person is in, as one list. Search uses it: the
+// profile search asks the search relays for any term longer than two characters and keeps
+// whatever comes back, so without this a closed club's search offers strangers from the open
+// network. While a space's list is still loading this comes back short, which shows too few
+// people for a moment rather than the wrong ones.
+export const deriveUserSpaceMembers = () =>
+  derived([userSpaceUrls, relayMemberLists.get().index.$], ([$urls, $index]) =>
+    uniq($urls.flatMap(url => $index.get(url)?.pubkeys() ?? [])),
+  )
+
 // Spaces get reordered from lists that show only some of them, so the urls given here go back
 // in the slots the ones they replace occupied.
 export const reorderSpaceUrls = (urls: string[]) => {
