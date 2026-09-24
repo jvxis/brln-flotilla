@@ -10,6 +10,7 @@
   import ModalTitle from "@lib/components/ModalTitle.svelte"
   import ModalFooter from "@lib/components/ModalFooter.svelte"
   import {deriveUserItem, profiles} from "@app/core"
+  import {publish} from "@app/publish"
   import {wallet} from "@app/lightning"
   import {clearModals} from "@app/modal"
   import {pushToast} from "@app/toast"
@@ -23,7 +24,7 @@
 
     try {
       const command = await $profiles.update(writer => writer.update({lud16}))
-      const error = await command.publish().waitForError()
+      const error = await publish(command).waitForError()
 
       if (error) {
         pushToast({theme: "error", message: `Failed to update profile: ${errorMessage(error)}`})

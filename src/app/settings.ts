@@ -8,6 +8,7 @@ import type {AppDataReader} from "@welshman/domain"
 import {DerivedPlugin, Domain, Network, User, projectFrom} from "@welshman/app"
 import type {IApp, Projection} from "@welshman/app"
 import {app, fromApp, usePlugin} from "@app/core"
+import {publish} from "@app/publish"
 
 export const SETTINGS = "flotilla/settings"
 
@@ -171,7 +172,7 @@ export const publishSettings = async (params: Partial<SettingsValues>) => {
 
   const command = await $app.use(Domain).command(writer)
 
-  return command.publish()
+  return publish(command)
 }
 
 export const addTrustedRelay = (url: string) =>

@@ -14,6 +14,7 @@
   import CheckCircle from "@assets/icons/check-circle.svg?dataurl"
   import {pushToast} from "@app/toast"
   import {profiles, user} from "@app/core"
+  import {publish} from "@app/publish"
   import {wallet} from "@app/lightning"
 
   const back = () => history.back()
@@ -37,7 +38,7 @@
         writer.update({lud06: undefined, lud16: address.trim() || undefined}),
       )
 
-      const error = await command.publish().waitForError()
+      const error = await publish(command).waitForError()
 
       if (error) {
         pushToast({theme: "error", message: `Failed to update profile: ${errorMessage(error)}`})

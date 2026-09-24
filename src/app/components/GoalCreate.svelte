@@ -2,7 +2,7 @@
   import {writable} from "svelte/store"
   import {relay, toMsats} from "@welshman/util"
   import {ZapGoal} from "@welshman/domain"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {isMobile, preventDefault} from "@lib/html"
   import Paperclip from "@assets/icons/paperclip-2.svg?dataurl"
   import Bolt from "@assets/icons/bolt.svg?dataurl"

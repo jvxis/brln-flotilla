@@ -2,7 +2,7 @@
   import {writable} from "svelte/store"
   import {relay} from "@welshman/util"
   import {Thread} from "@welshman/domain"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {isMobile, preventDefault} from "@lib/html"
   import Paperclip from "@assets/icons/paperclip-2.svg?dataurl"
   import AltArrowLeft from "@assets/icons/alt-arrow-left.svg?dataurl"

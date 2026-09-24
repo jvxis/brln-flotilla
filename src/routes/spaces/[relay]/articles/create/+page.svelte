@@ -6,7 +6,7 @@
   import {now, randomId} from "@welshman/lib"
   import {getAddress, relay} from "@welshman/util"
   import {Article} from "@welshman/domain"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {isMobile} from "@lib/html"
   import Paperclip from "@assets/icons/paperclip-2.svg?dataurl"
   import DocumentText from "@assets/icons/document-text.svg?dataurl"

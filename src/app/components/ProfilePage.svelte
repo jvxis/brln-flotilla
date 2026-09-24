@@ -1,6 +1,6 @@
 <script lang="ts">
   import * as nip19 from "nostr-tools/nip19"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {displayPubkey} from "@welshman/domain"
   import Copy from "@assets/icons/copy.svg?dataurl"
   import LinkRound from "@assets/icons/link-round.svg?dataurl"
@@ -82,7 +82,7 @@
       if (result?.url) {
         const command = await $profiles.update(w => w.setBanner(result.url))
 
-        await command.publish().waitForCompletion()
+        await publish(command).waitForCompletion()
 
         pushToast({message: "Banner updated."})
       }

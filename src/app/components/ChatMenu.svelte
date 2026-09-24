@@ -1,7 +1,7 @@
 <script lang="ts">
   import {onMount} from "svelte"
   import {assoc} from "@welshman/lib"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import Check from "@assets/icons/check.svg?dataurl"
   import Bell from "@assets/icons/bell.svg?dataurl"
   import BellOff from "@assets/icons/bell-off.svg?dataurl"

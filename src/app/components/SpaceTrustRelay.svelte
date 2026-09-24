@@ -1,7 +1,7 @@
 <script lang="ts">
   import {remove} from "@welshman/lib"
   import {displayRelayUrl} from "@welshman/util"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {preventDefault} from "@lib/html"
   import CloseCircle from "@assets/icons/close-circle.svg?dataurl"
   import CheckCircle from "@assets/icons/check-circle.svg?dataurl"

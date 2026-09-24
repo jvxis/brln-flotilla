@@ -1,7 +1,8 @@
 <script lang="ts">
   import {onMount} from "svelte"
   import type {Maybe} from "@welshman/lib"
-  import {MembershipStatus, publish} from "@welshman/app"
+  import {MembershipStatus} from "@welshman/app"
+  import {publish} from "@app/publish"
   import Pen from "@assets/icons/pen.svg?dataurl"
   import TrashBin2 from "@assets/icons/trash-bin-2.svg?dataurl"
   import Login3 from "@assets/icons/login-3.svg?dataurl"
@@ -54,7 +55,7 @@
         "This room will no longer be accessible to space members, and all messages posted to it will be deleted.",
       confirm: async () => {
         const command = await $rooms.deleteRoom(url, {h})
-        const thunk = command.publish()
+        const thunk = publish(command)
         const message = await thunk.waitForError()
 
         if (message) {

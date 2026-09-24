@@ -3,7 +3,7 @@
   import {writable} from "svelte/store"
   import {randomId} from "@welshman/lib"
   import {relay} from "@welshman/util"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {TimeEvent} from "@welshman/domain"
   import {preventDefault} from "@lib/html"
   import GallerySend from "@assets/icons/gallery-send.svg?dataurl"

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import {BlossomServerLists, MuteLists, publish} from "@welshman/app"
+  import {BlossomServerLists, MuteLists} from "@welshman/app"
+  import {publish} from "@app/publish"
   import NotesMinimalistic from "@assets/icons/notes-minimalistic.svg?dataurl"
   import AddCircle from "@assets/icons/add-circle.svg?dataurl"
   import Microphone from "@assets/icons/microphone.svg?dataurl"

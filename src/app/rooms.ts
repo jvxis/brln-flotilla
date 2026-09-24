@@ -5,7 +5,8 @@ import type {Maybe} from "@welshman/lib"
 import {outbox, relay, seen, toNostrURI} from "@welshman/util"
 import type {EventContent, TrustedEvent} from "@welshman/util"
 import {Message} from "@welshman/domain"
-import {MembershipStatus, RoomLists, makeRoomKey, createSearch, publish} from "@welshman/app"
+import {MembershipStatus, RoomLists, makeRoomKey, createSearch} from "@welshman/app"
+import {publish} from "@app/publish"
 import type {Room, RoomMeta} from "@welshman/app"
 import {
   deriveUserItem,
@@ -65,7 +66,7 @@ export const addRoomMembers = async (url: string, room: RoomMeta, pubkeys: strin
       rooms
         .get()
         .addMember(url, room, pk)
-        .then(command => command.publish().waitForError()),
+        .then(command => publish(command).waitForError()),
     ),
   )
 

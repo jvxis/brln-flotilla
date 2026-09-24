@@ -11,6 +11,7 @@
   import {clearModals} from "@app/modal"
   import {pushToast} from "@app/toast"
   import {profiles, user} from "@app/core"
+  import {publish} from "@app/publish"
 
   const initialValues = {profile: {...$profiles.get($user.pubkey)?.values}}
 
@@ -21,7 +22,7 @@
 
     try {
       const command = await $profiles.update(writer => writer.update(profile))
-      const thunk = command.publish()
+      const thunk = publish(command)
 
       // waitForError resolves on the first relay that refuses, before the others answer.
       // A member's write relays often include a paid one that refuses anyone who hasn't

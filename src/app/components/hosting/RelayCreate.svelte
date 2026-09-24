@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import RelayForm, {type RelayFormValues} from "@app/components/hosting/RelayForm.svelte"
   import PaymentDialog from "@app/components/hosting/PaymentDialog.svelte"
   import PaymentSetup from "@app/components/hosting/PaymentSetup.svelte"

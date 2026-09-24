@@ -12,6 +12,7 @@
   import Modal from "@lib/components/Modal.svelte"
   import ModalBody from "@lib/components/ModalBody.svelte"
   import {rooms} from "@app/core"
+  import {publish} from "@app/publish"
   import {joinRoom} from "@app/access"
   import {pushToast} from "@app/toast"
   import {resolveImageInput} from "@app/uploads"
@@ -48,14 +49,14 @@
     room.picture = await resolveImageInput(imageFile, imagePreview, compressOptions)
 
     const createCommand = await $rooms.createRoom(url, room)
-    const createMessage = await createCommand.publish().waitForError()
+    const createMessage = await publish(createCommand).waitForError()
 
     if (createMessage && !createMessage.includes("already")) {
       return pushToast({theme: "error", message: createMessage})
     }
 
     const editCommand = await $rooms.editRoom(url, room)
-    const editMessage = await editCommand.publish().waitForError()
+    const editMessage = await publish(editCommand).waitForError()
 
     if (editMessage) {
       return pushToast({theme: "error", message: editMessage})

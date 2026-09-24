@@ -1,7 +1,7 @@
 <script lang="ts">
   import {MESSAGE} from "@welshman/util"
   import type {TrustedEvent} from "@welshman/util"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import Server from "@assets/icons/server.svg?dataurl"
   import Icon from "@lib/components/Icon.svelte"
   import Badge from "@lib/components/Badge.svelte"

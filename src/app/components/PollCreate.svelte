@@ -1,7 +1,7 @@
 <script lang="ts">
   import {insertAt, now, randomId, removeAt, removeUndefined, spec} from "@welshman/lib"
   import {relay} from "@welshman/util"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {Poll} from "@welshman/domain"
   import type {PollType} from "@welshman/domain"
   import {isMobile, preventDefault} from "@lib/html"

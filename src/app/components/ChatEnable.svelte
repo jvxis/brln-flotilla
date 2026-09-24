@@ -12,6 +12,7 @@
   import ModalTitle from "@lib/components/ModalTitle.svelte"
   import ModalFooter from "@lib/components/ModalFooter.svelte"
   import {deriveUserItem, messagingRelayLists, relayLists} from "@app/core"
+  import {publish} from "@app/publish"
   import {DEFAULT_RELAYS, DEFAULT_MESSAGING_RELAYS} from "@app/env"
   import {pushToast} from "@app/toast"
 
@@ -36,7 +37,7 @@
           writer.setReadUrls(DEFAULT_RELAYS).setWriteUrls(DEFAULT_RELAYS),
         )
 
-        const error = await command.publish().waitForError()
+        const error = await publish(command).waitForError()
 
         if (error) {
           pushToast({theme: "error", message: error})
@@ -45,7 +46,7 @@
       }
 
       const command = await $messagingRelayLists.setUrls(DEFAULT_MESSAGING_RELAYS)
-      const error = await command.publish().waitForError()
+      const error = await publish(command).waitForError()
 
       if (error) {
         pushToast({theme: "error", message: error})

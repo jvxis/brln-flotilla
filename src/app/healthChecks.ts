@@ -7,10 +7,10 @@ import {
   SearchRelayLists,
   projectFrom,
   projection,
-  publish,
 } from "@welshman/app"
 import type {IApp, Projection} from "@welshman/app"
 import {usePlugin} from "@app/core"
+import {publish} from "@app/publish"
 import {DEFAULT_RELAYS, DEFAULT_MESSAGING_RELAYS} from "@app/env"
 
 export type HealthCheckContext = {

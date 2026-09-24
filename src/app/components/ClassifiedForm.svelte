@@ -3,7 +3,7 @@
   import cx from "classnames"
   import {removeUndefined, randomId, uniq, toggle} from "@welshman/lib"
   import {relay} from "@welshman/util"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import {Classified} from "@welshman/domain"
   import {isMobile, preventDefault} from "@lib/html"
   import {normalizeTopic} from "@lib/util"

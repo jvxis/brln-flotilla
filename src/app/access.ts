@@ -16,7 +16,8 @@ import {
   type ManagementResponse,
 } from "@welshman/util"
 import {RelayJoin, RelayLeave, RoomJoin, RoomLeave, displayPubkey} from "@welshman/domain"
-import {Sync, User, publish} from "@welshman/app"
+import {Sync, User} from "@welshman/app"
+import {publish} from "@app/publish"
 import {stripPrefix} from "@lib/util"
 import {app, command, relayManagement, roomLists, thunks, writer} from "@app/core"
 import {PLATFORM_ACCESS_URL, PLATFORM_URL} from "@app/env"

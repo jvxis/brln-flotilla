@@ -1,6 +1,6 @@
 <script lang="ts">
   import {displayRelayUrl} from "@welshman/util"
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import AltArrowLeft from "@assets/icons/alt-arrow-left.svg?dataurl"
   import LinkRound from "@assets/icons/link-round.svg?dataurl"
   import EyeClosed from "@assets/icons/eye-closed.svg?dataurl"

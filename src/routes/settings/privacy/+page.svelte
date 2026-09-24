@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {publish} from "@welshman/app"
+  import {publish} from "@app/publish"
   import ShieldMinimalistic from "@assets/icons/shield-minimalistic.svg?dataurl"
   import ForbiddenCircle from "@assets/icons/forbidden-circle.svg?dataurl"
   import {preventDefault} from "@lib/html"
