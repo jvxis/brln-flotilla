@@ -1,7 +1,7 @@
 import {mount} from "svelte"
 import type {Writable} from "svelte/store"
 import {get, derived} from "svelte/store"
-import {sortBy, uniq} from "@welshman/lib"
+import {uniq} from "@welshman/lib"
 import {throttled} from "@welshman/store"
 import {createSearch, splitRoomKey} from "@welshman/app"
 import type {Room} from "@welshman/app"
@@ -68,13 +68,26 @@ export const makeEditor = async ({
   // When given, `/` at the start of the composer suggests commands scoped to this target
   commandTarget?: CommandScopeTarget
 }) => {
+  // Mentions used to be sorted by membership but not restricted by it, so the list offered every
+  // profile the browser had ever loaded -- and profiles arrive from outside the club through
+  // several doors: the follow and mute lists of everyone the person follows are read from up to
+  // eight public relays, and the profile search itself queries the search relays for any term
+  // longer than two characters and keeps what comes back. Strangers showed up in the club's
+  // rooms that way. In a closed space, mentioning someone who isn't in it is useless -- they
+  // can't read the room -- so the space's member list is the whole answer. Where there is no
+  // member list, a direct message or a space that keeps none, nothing is filtered.
   const searchProfiles = derived(
     [profiles.get().profileSearch, throttled(800, relayMemberLists.get().forUrl(url ?? ""))],
     ([$profileSearch, $spaceMembers]) => {
       const memberPubkeys = new Set($spaceMembers?.pubkeys())
 
-      return (term: string) =>
-        sortBy(pubkey => (memberPubkeys.has(pubkey) ? 0 : 1), $profileSearch.searchValues(term))
+      return (term: string) => {
+        const matches = $profileSearch.searchValues(term)
+
+        if (memberPubkeys.size === 0) return matches
+
+        return matches.filter(pubkey => memberPubkeys.has(pubkey))
+      }
     },
   )
 
