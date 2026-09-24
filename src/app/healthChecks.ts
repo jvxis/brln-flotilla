@@ -62,26 +62,33 @@ export class HealthChecks {
 
   private supportsSearch = (url: string) => this.app.use(Relays).get(url)?.hasNip(50)
 
+  // Upstream calls one relay "missing", because on the open network a single relay is a single
+  // point of failure. The club runs exactly one, and it is what every default here points at, so
+  // that reading left three warnings standing on the home screen for every member, with an
+  // "Update" button that re-applied the same one relay and cleared nothing. A warning nobody can
+  // clear teaches people to ignore warnings, so these fire only when there is no relay at all.
+  // When the guardians' relay exists, redundancy is worth asking about again -- by name, not by
+  // counting.
   private checks: HealthCheck[] = [
     {
       title: "Missing Inbox Relays",
       description: "Other people aren't currently able to reliably tag you in public notes.",
       action: "Update",
-      isPending: context => context.readRelays.length <= 1,
+      isPending: context => context.readRelays.length < 1,
       apply: () => this.app.use(RelayLists).setReadUrls(DEFAULT_RELAYS).then(publish),
     },
     {
       title: "Missing Outbox Relays",
       description: "Other people aren't currently able to reliably find your public notes.",
       action: "Update",
-      isPending: context => context.writeRelays.length <= 1,
+      isPending: context => context.writeRelays.length < 1,
       apply: () => this.app.use(RelayLists).setWriteUrls(DEFAULT_RELAYS).then(publish),
     },
     {
       title: "Missing DM Relays",
       description: "You aren't currently able to reliably send or receive direct messages.",
       action: "Update",
-      isPending: context => context.messagingRelays.length <= 1,
+      isPending: context => context.messagingRelays.length < 1,
       apply: () =>
         this.app.use(MessagingRelayLists).setUrls(DEFAULT_MESSAGING_RELAYS).then(publish),
     },
