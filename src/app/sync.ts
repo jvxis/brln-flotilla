@@ -95,6 +95,17 @@ const isRefusedBeforeAuth = (reason: string, url: string) =>
   reason.startsWith("auth-required") ||
   (reason.startsWith("restricted") && app.get().pool.get(url).auth.status !== AuthStatus.Ok)
 
+// A gift wrap's timestamp is deliberately wrong. NIP-59 backdates it by a random amount of up
+// to 100,000 seconds -- about 28 hours -- so a relay can't tell when a conversation happened.
+// A live subscription that reaches back one minute therefore never matches a wrap that was
+// just published: the relay compares the filter against that false date and withholds the
+// event. The message only appeared on the next page load, when the pull runs with no lower
+// bound. So a filter that asks for wraps reaches back past the whole drift.
+const WRAP_DRIFT = 100_000
+
+const listenSince = (filter: Filter, since: number) =>
+  Math.max(filter.since || 0, filter.kinds?.includes(WRAP) ? since - WRAP_DRIFT : since)
+
 const withoutLimit = (filter: Filter) => {
   const copy = {...filter}
 
@@ -180,7 +191,7 @@ const listen = ({url, signal, filters}: SyncOpts) => {
       filters: unionFilters(
         filters.map(filter => ({
           ...withoutLimit(filter),
-          since: Math.max(filter.since || 0, since),
+          since: listenSince(filter, since),
         })),
       ),
       onEose: () => {
