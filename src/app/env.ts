@@ -43,6 +43,12 @@ export const DEFAULT_MESSAGING_RELAYS = fromCsv(env("VITE_DEFAULT_MESSAGING_RELA
 
 export const PLATFORM_RELAYS = fromCsv(env("VITE_PLATFORM_RELAYS")).map(normalizeRelayUrl)
 
+// Os guardiões do espaço da plataforma: relays que guardam a mesma conversa, para que ela
+// continue existindo se a máquina do clube cair. Ficam aqui, e não na lista acima, porque a
+// lista acima é o que o chat desenha na barra lateral -- pô-los lá daria três clubes no lugar
+// de um. Ver mirrors.ts.
+export const SPACE_MIRRORS = fromCsv(env("VITE_SPACE_MIRRORS")).map(normalizeRelayUrl)
+
 export const PLATFORM_URL = env("VITE_PLATFORM_URL")
 
 export const PLATFORM_ABOUT = env("VITE_PLATFORM_ABOUT")

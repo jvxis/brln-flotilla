@@ -59,6 +59,7 @@ import {
 import {LIVEKIT_PARTICIPANTS} from "@app/call"
 import {REACTION_KINDS, CONTENT_KINDS, makeCommentFilter} from "@app/content"
 import {INDEXER_RELAYS, PLATFORM_RELAYS} from "@app/env"
+import {ligaOsGuardioes, relaysDoEspaco} from "@app/mirrors"
 import {FEATURED_CONTENT_D} from "@app/featured"
 import {decodeRelay} from "@app/relays"
 import {Settings} from "@app/settings"
@@ -411,13 +412,25 @@ const syncUserData = () => {
 
 // Spaces
 
-const syncSpace = (url: string) => {
+const syncSpace = (spaceUrl: string) => {
   const controller = new AbortController()
 
+  // Um espaço pode ser feito de mais de um relay: o do clube e os guardiões, que guardam a
+  // mesma conversa. Pedir a todos é o que faz a conversa continuar aparecendo quando um deles
+  // não responde -- e é o motivo de os guardiões existirem. Os eventos são os mesmos, com o
+  // mesmo id, então o que chega repetido se funde sozinho.
+  for (const url of relaysDoEspaco(spaceUrl)) {
+    sincronizaUmRelayDoEspaco(url, controller.signal)
+  }
+
+  return () => controller.abort()
+}
+
+const sincronizaUmRelayDoEspaco = (url: string, signal: AbortSignal) => {
   // Low cardinality we want everything for
   pullAndListen({
     url,
-    signal: controller.signal,
+    signal,
     filters: [
       {kinds: [RELAY_MEMBERS, RELAY_ROLE]},
       {kinds: [APP_DATA], "#d": [FEATURED_CONTENT_D]},
@@ -427,7 +440,7 @@ const syncSpace = (url: string) => {
   // Higher cardinality stuff we want as much as we can get
   pullAndListen({
     url,
-    signal: controller.signal,
+    signal,
     filters: [
       {
         kinds: [
@@ -446,7 +459,7 @@ const syncSpace = (url: string) => {
   // Recent stuff, best effort
   pullAndListen({
     url,
-    signal: controller.signal,
+    signal,
     filters: [
       {kinds: [...CONTENT_KINDS, MESSAGE, PIN, ROOM_JOIN, ROOM_LEAVE], since: ago(MONTH)},
       {kinds: [...REACTION_KINDS, POLL_RESPONSE], since: ago(WEEK)},
@@ -460,18 +473,16 @@ const syncSpace = (url: string) => {
   // a closed relay refuses what it is asked before that, and the refusal is hidden from the
   // caller by the auth buffer, so the answer simply never comes.
   void (async () => {
-    await waitUntilListenable(url, controller.signal)
+    await waitUntilListenable(url, signal)
 
-    if (controller.signal.aborted) return
+    if (signal.aborted) return
 
     network.get().load({
       relays: [url],
-      signal: controller.signal,
+      signal,
       filters: CONTENT_KINDS.map(kind => ({kinds: [kind], limit: 1})),
     })
   })()
-
-  return () => controller.abort()
 }
 
 const syncSpaces = () => {
@@ -600,7 +611,9 @@ let unsubscribe: Unsubscriber | undefined
 export const syncApplicationData = () => {
   unsubscribe?.()
 
-  const unsubscribers = [syncRelays(), syncUserData(), syncSpaces(), syncDMs()]
+  // A ponte dos guardiões vem primeiro: ela precisa estar ouvindo antes que o primeiro evento
+  // chegue por um deles, senão esse evento fica marcado só com o guardião e não aparece.
+  const unsubscribers = [ligaOsGuardioes(), syncRelays(), syncUserData(), syncSpaces(), syncDMs()]
 
   unsubscribe = () => unsubscribers.forEach(call)
 
