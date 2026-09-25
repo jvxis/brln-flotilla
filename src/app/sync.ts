@@ -221,15 +221,25 @@ const listen = ({url, signal, filters}: SyncOpts) => {
   start()
 }
 
-const pullAndListen = ({url, signal, filters}: SyncOpts) => {
+const pullAndListen = async ({url, signal, filters}: SyncOpts) => {
+  if (signal.aborted) return
+
+  listen({url, signal, filters})
+
+  // The pull used to go out the moment the socket opened, which is before the relay has
+  // authenticated the connection -- and a closed relay refuses what it is asked before that,
+  // silently, because the refusal never reaches the caller. The listener learned to wait in
+  // 22/09; the pull had not, and it is the pull that carries the small things nobody asks for
+  // a second time. The relay roles were missing from every screen for exactly this reason: the
+  // member list only survived because the space layout fetches it outright.
+  await waitUntilListenable(url, signal)
+
   if (signal.aborted) return
 
   app
     .get()
     .use(Sync)
     .pull({relays: [url], filters})
-
-  listen({url, signal, filters})
 }
 
 const userRoomList = deriveUserItem(RoomLists)
