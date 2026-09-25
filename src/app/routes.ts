@@ -8,6 +8,7 @@ import {
   EVENT_TIME,
   LONG_FORM,
   MESSAGE,
+  PIN,
   PINBOARD,
   POLL,
   THREAD,
@@ -196,6 +197,17 @@ export const makeEventPath = (event: TrustedEvent, urls: string[]) => {
 
     if (event.kind === MESSAGE) {
       return makeMessagePath(url, event)
+    }
+
+    // Um item da Library não é uma página: ele mora numa prateleira, e é a prateleira que
+    // se abre. Sem isto ele não tinha destino aqui dentro e caía no endereço genérico lá
+    // fora -- alguém partilhava um link do clube e o clube mandava a pessoa para outro app.
+    if (event.kind === PIN) {
+      const prateleira = tagValue(tagSpec("A"), event.tags)
+
+      if (prateleira) {
+        return makeLibraryPath(url, prateleira)
+      }
     }
 
     const path = makeContentPath(url, event.kind, getIdOrAddress(event))
