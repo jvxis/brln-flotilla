@@ -31,6 +31,7 @@
   import RoomItemEmojiButton from "@app/components/RoomItemEmojiButton.svelte"
   import RoomItemMenuButton from "@app/components/RoomItemMenuButton.svelte"
   import RoomItemMenuMobile from "@app/components/RoomItemMenuMobile.svelte"
+  import MemberRoles from "@app/components/MemberRoles.svelte"
   import RoomItemContent from "@app/components/RoomItemContent.svelte"
   import {profiles, thunks, user} from "@app/core"
   import {noThunks, thunksByEventId} from "@app/thunks"
@@ -119,10 +120,11 @@
     {/if}
     <div class="min-w-0 grow pr-1">
       {#if showPubkey}
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <Button onclick={openProfile} class="text-sm font-bold" style="color: {colorValue}">
             {$profileDisplay}
           </Button>
+          <MemberRoles {url} pubkey={event.pubkey} />
           <span class="text-xs opacity-50">
             {#if formatTimestampAsDate(event.created_at) === today}
               Today
