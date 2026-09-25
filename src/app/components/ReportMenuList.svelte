@@ -13,6 +13,7 @@
   import {deriveUserIsSpaceAdmin} from "@app/management"
   import {pushToast} from "@app/toast"
   import {pushModal} from "@app/modal"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   type Props = {
     url: string
@@ -31,7 +32,7 @@
     const protect = await $relays.hasNip(url, 70)
     const command = await $deletes.deleteEvent(event, w => w.setProtected(protect))
 
-    command.publishToRelays([url])
+    command.publishToRelays(relaysDoEspaco(url))
     onResolved?.()
   }
 

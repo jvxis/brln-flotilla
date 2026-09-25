@@ -18,6 +18,7 @@
   import {DraftKey} from "@app/drafts"
   import {pushToast} from "@app/toast"
   import {command, relays, writer} from "@app/core"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   type Values = {
     content?: string | object
@@ -72,7 +73,7 @@
       eventWriter.setRoom(url, h)
     }
 
-    const thunk = await command(eventWriter).then(publishToRelays([url]))
+    const thunk = await command(eventWriter).then(publishToRelays(relaysDoEspaco(url)))
 
     draftKey.clear()
     onSubmit(thunk)

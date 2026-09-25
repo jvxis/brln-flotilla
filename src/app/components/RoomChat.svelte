@@ -49,6 +49,7 @@
   import {makeRoomPath} from "@app/routes"
   import {pendingShare, type Share} from "@app/share"
   import {pushToast} from "@app/toast"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   type Props = {
     url: string
@@ -190,7 +191,7 @@
           w.setProtected(protect),
         )
 
-        command.publishToRelays([url])
+        command.publishToRelays(relaysDoEspaco(url))
       }
 
       // A share is a quote rather than a reply, so it goes in the content directly and
@@ -215,7 +216,7 @@
       }
 
       const thunk = $thunks.publish({
-        relays: [url],
+        relays: relaysDoEspaco(url),
         event: stamp(await eventWriter.renderTemplate(), eventToEdit?.created_at),
         delay: $userSettingsValues.send_delay,
       })

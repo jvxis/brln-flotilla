@@ -16,6 +16,7 @@
   import {shareEvent} from "@app/share"
   import {pushModal} from "@app/modal"
   import {pushToast} from "@app/toast"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   type Props = {
     url: string
@@ -41,7 +42,9 @@
   const deletePin = async () => {
     try {
       const command = await $deletes.deleteEvent(pin.event)
-      const thunk = isOwn ? await command.publishToRelays([url]) : await command.publishAsRelay(url)
+      const thunk = isOwn
+        ? await command.publishToRelays(relaysDoEspaco(url))
+        : await command.publishAsRelay(url)
 
       const error = await thunk.waitForError()
 

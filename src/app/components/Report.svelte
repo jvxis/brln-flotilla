@@ -15,6 +15,7 @@
   import ModalBody from "@lib/components/ModalBody.svelte"
   import {command, writer} from "@app/core"
   import {pushToast} from "@app/toast"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   const {url, event} = $props()
 
@@ -37,7 +38,7 @@
       .setContent(content)
 
     const reportCommand = await command(eventWriter)
-    const error = await reportCommand.publishToRelays([url]).waitForError()
+    const error = await reportCommand.publishToRelays(relaysDoEspaco(url)).waitForError()
 
     loading = false
 

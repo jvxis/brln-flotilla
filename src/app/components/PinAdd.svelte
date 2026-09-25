@@ -4,6 +4,7 @@
   import PinForm, {type PinFormValues} from "@app/components/PinForm.svelte"
   import {app, command, writer} from "@app/core"
   import {setPinReference} from "@app/pinboards"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   type Props = {
     url: string
@@ -46,7 +47,7 @@
     // button simply spun forever (reported by a member on 23/09/2026).
     try {
       const thunk = collaborative
-        ? await command(eventWriter).then(publishToRelays([url]))
+        ? await command(eventWriter).then(publishToRelays(relaysDoEspaco(url)))
         : await command(eventWriter).then(publishAsRelay(url))
 
       return thunk.waitForError()

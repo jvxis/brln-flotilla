@@ -16,6 +16,7 @@ import {deletes, reader, relays, thunks} from "@app/core"
 import {deriveEvents} from "@app/repository"
 import {PROTECTED, ROOM} from "@app/rooms"
 import {kv} from "@app/storage"
+import {relaysDoEspaco} from "@app/mirrors"
 
 // Views
 
@@ -293,5 +294,5 @@ export const retractRsvp = async (url: string, rsvp: TrustedEvent) => {
   const protect = await relays.get().hasNip(url, 70)
   const command = await deletes.get().deleteEvent(rsvp, writer => writer.setProtected(protect))
 
-  return command.publishToRelays([url])
+  return command.publishToRelays(relaysDoEspaco(url))
 }

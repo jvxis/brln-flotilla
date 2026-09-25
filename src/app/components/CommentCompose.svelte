@@ -14,6 +14,7 @@
   import {DraftKey} from "@app/drafts"
   import {makeEditor} from "@app/editor"
   import {pushToast} from "@app/toast"
+  import {relaysDoEspaco} from "@app/mirrors"
 
   type Values = {
     content?: string | object
@@ -63,7 +64,7 @@
         eventWriter.setRoom(url, h)
       }
 
-      const thunk = await command(eventWriter).then(publishToRelays([url]))
+      const thunk = await command(eventWriter).then(publishToRelays(relaysDoEspaco(url)))
       const error = await thunk.waitForError()
 
       if (error) {
