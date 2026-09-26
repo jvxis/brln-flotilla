@@ -130,6 +130,20 @@ Two changes. The pending branch now renders a spinner and, after twelve seconds,
 
 Upstream candidate: yes, both.
 
+### 13. A remote signer listener that is alive and deaf must be reopened
+
+`src/app/remoteSigner.ts`.
+
+`Nip46Receiver` opens one subscription when the session starts and never opens it again: its `onClose` only forgets the abort controller. When that socket drops, answers keep arriving and nobody is listening — the signer looks alive, and every window sits on "Authenticating" until it is reloaded. Reported as `coracle-social/welshman` #61 and still present in the installed 0.10.9.
+
+The first version of this patch called `start()` on a timer. That is not enough, and 26/09/2026 showed why: `start()` returns immediately while the subscription is live, so a subscription that is alive and *deaf* is never reopened. A member sat stuck for twenty-six minutes, reading fine and unable to write, while the watch called a no-op every five seconds.
+
+Asking "does the subscription exist?" is a proxy, and the proxy is what lied. Now the watch pings the signer every thirty seconds — a real round trip through send, relay, signer, relay, receive — under a ten-second deadline of our own, because welshman's requests carry none. No answer means the path is broken whatever the object says, and the subscription is reopened.
+
+Reopening aborts the controller and clears it rather than calling `receiver.stop()`. `stop()` also does `removeAllListeners()`, and every request in flight registers its own listener there; stripping it would turn a signature that is merely slow into one that hangs forever.
+
+Upstream candidate: yes. The library should reopen on close, and its requests should carry a deadline.
+
 ## Updating from upstream
 
 ```sh
