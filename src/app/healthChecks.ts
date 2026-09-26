@@ -1,5 +1,5 @@
 import {derived} from "svelte/store"
-import {sample} from "@welshman/lib"
+import {sample, uniq} from "@welshman/lib"
 import {
   MessagingRelayLists,
   RelayLists,
@@ -11,7 +11,8 @@ import {
 import type {IApp, Projection} from "@welshman/app"
 import {usePlugin} from "@app/core"
 import {publish} from "@app/publish"
-import {DEFAULT_RELAYS, DEFAULT_MESSAGING_RELAYS} from "@app/env"
+import {DEFAULT_RELAYS, DEFAULT_MESSAGING_RELAYS, PLATFORM_RELAYS} from "@app/env"
+import {relaysDoEspaco} from "@app/mirrors"
 
 export type HealthCheckContext = {
   readRelays: string[]
@@ -27,6 +28,10 @@ export type HealthCheck = {
   isPending: (context: HealthCheckContext) => boolean
   apply: (context: HealthCheckContext) => unknown
 }
+
+// Os relays que formam o espaco do clube: o principal e os guardioes. Uma caixa de correio
+// que nao os nomeie todos deixa as diretas dependendo de uma maquina so.
+const relaysDoClube = PLATFORM_RELAYS[0] ? relaysDoEspaco(PLATFORM_RELAYS[0]) : []
 
 export class HealthChecks {
   context: Projection<HealthCheckContext>
@@ -91,6 +96,28 @@ export class HealthChecks {
       isPending: context => context.messagingRelays.length < 1,
       apply: () =>
         this.app.use(MessagingRelayLists).setUrls(DEFAULT_MESSAGING_RELAYS).then(publish),
+    },
+    {
+      // A caixa de correio e o endereco por onde as diretas chegam, e quem escreve le a caixa
+      // DO DESTINATARIO. Entao nao adianta este chat escutar os tres relays do clube: se a
+      // caixa de alguem nomeia so o principal, quem lhe escrever publica so ali, e numa queda
+      // a mensagem nao chega nem sai -- com os guardioes guardando tudo do lado de fora.
+      //
+      // Acrescenta o que falta em vez de substituir a lista: a caixa e da pessoa, e ela pode
+      // ter relays proprios que nao cabe a nos apagar.
+      title: "Incomplete DM Relays",
+      description:
+        "Your direct messages depend on a single server. If it goes down they stop arriving " +
+        "and stop going out, even though the club's other servers are holding them.",
+      action: "Add The Rest",
+      isPending: context =>
+        context.messagingRelays.length > 0 &&
+        relaysDoClube.some(url => !context.messagingRelays.includes(url)),
+      apply: context =>
+        this.app
+          .use(MessagingRelayLists)
+          .setUrls(uniq([...context.messagingRelays, ...relaysDoClube]))
+          .then(publish),
     },
     {
       title: "Too Many Inbox Relays",
