@@ -31,7 +31,7 @@ export type HealthCheck = {
 
 // Os relays que formam o espaco do clube: o principal e os guardioes. Uma caixa de correio
 // que nao os nomeie todos deixa as diretas dependendo de uma maquina so.
-const relaysDoClube = PLATFORM_RELAYS[0] ? relaysDoEspaco(PLATFORM_RELAYS[0]) : []
+export const relaysDoClube = PLATFORM_RELAYS[0] ? relaysDoEspaco(PLATFORM_RELAYS[0]) : []
 
 export class HealthChecks {
   context: Projection<HealthCheckContext>

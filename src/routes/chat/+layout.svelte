@@ -17,6 +17,7 @@
   import ChatMenu from "@app/components/ChatMenu.svelte"
   import ChatStart from "@app/components/ChatStart.svelte"
   import ChatItem from "@app/components/ChatItem.svelte"
+  import ChatRelayNotice from "@app/components/ChatRelayNotice.svelte"
   import {chatSearch} from "@app/chats"
   import {pushModal} from "@app/modal"
   import {shouldUnwrap} from "@app/sync"
@@ -69,6 +70,7 @@
   </div>
 </SecondaryNav>
 <Page>
+  <ChatRelayNotice />
   {#key $page.url.pathname}
     {@render children?.()}
   {/key}
