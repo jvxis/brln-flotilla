@@ -148,6 +148,16 @@ So `reopen` now calls `pool.remove(url)` for every relay of the broker before re
 
 Upstream candidate: yes. The library should reopen on close — the socket, not only the subscription — and its requests should carry a deadline.
 
+### 14. A public page does not dial the signer's private-network relays
+
+`src/app/remoteSigner.ts`, `reachableRelays`.
+
+A signer on a LightningOS node puts the node's own pairing relay in the pairing link, first, next to the club's, so the chat served by that same node talks to it without leaving the house. A chat served from a public address never reaches it: the node answers with a self-signed certificate, and a browser refuses that on a WebSocket opened from another origin — no prompt, no way to accept. Accepting the warning on the signer page does not carry over to the socket; measured on 27/09/2026. So `chat.br-ln.com` dialed `wss://192.168.68.92:4448/pairing` on every start and every reopen of the watch in patch 13, and failed every time.
+
+When the page's own host is public, relays on private networks leave the broker's list: 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16, Tailscale's 100.64/10, `localhost`, `.local`, `.lan`, `.internal`, `.home.arpa`, and the IPv6 loopback, unique-local and link-local ranges. Only when something is left — a pairing whose only relay is private keeps it, and fails as it did, rather than being left with none. The narrowed list lives in the broker's runtime params; the saved session is untouched.
+
+Upstream candidate: maybe. The rule is general, but whether a pairing link should carry a relay the client may not reach is the signer's decision, not the client's.
+
 ## Updating from upstream
 
 ```sh
