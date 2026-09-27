@@ -1,6 +1,6 @@
 import {derived, get, readable, writable} from "svelte/store"
 import type {Readable} from "svelte/store"
-import {batch, call, int, ms, now, on, sleep, uniqBy, MONTH, YEAR} from "@welshman/lib"
+import {batch, call, chunk, int, ms, now, on, sleep, uniqBy, MONTH, YEAR} from "@welshman/lib"
 import {
   COMMENT,
   DELETE,
@@ -15,6 +15,7 @@ import {
   hexTags,
   isReplaceableKind,
   matchFilters,
+  sortEventsDesc,
   tagSpec,
   tagValue,
   tagValues,
@@ -31,6 +32,10 @@ import {app, network} from "@app/core"
 import {getEventsForUrl} from "@app/repository"
 
 const noEvents: TrustedEvent[] = []
+
+// Events whose context one request asks for. Each is named twice (`#e` and `#E`) at 67 bytes a
+// name, so a slice comes to about 35 KB, far under what a relay reads in one message.
+const CONTEXT_SLICE = 250
 
 const mergeSorted = <T>(left: T[], right: T[], compare: (a: T, b: T) => number) => {
   const merged: T[] = []
@@ -139,7 +144,7 @@ export const makeFeedContext = ({
     }
   }
 
-  const loadFrom = async (urls: string[], events: TrustedEvent[]) => {
+  const loadSlice = async (urls: string[], events: TrustedEvent[]) => {
     const context = await network.get().load({
       relays: urls,
       signal: controller.signal,
@@ -149,12 +154,30 @@ export const makeFeedContext = ({
       ],
     })
 
-    if (context.length > 0) {
-      network.get().load({
-        relays: urls,
-        signal: controller.signal,
-        filters: getReplyFilters(context, {kinds: [DELETE]}),
-      })
+    // Not waited on, so the next slice of context doesn't queue behind these
+    void (async () => {
+      for (const slice of chunk(CONTEXT_SLICE, context)) {
+        if (controller.signal.aborted) return
+
+        await network.get().load({
+          relays: urls,
+          signal: controller.signal,
+          filters: getReplyFilters(slice, {kinds: [DELETE]}),
+        })
+      }
+    })()
+  }
+
+  // A room the browser already holds thousands of messages for hands them all over at once, and
+  // on 27/09/2026 one request naming every one of them passed the 512 KB a relay reads — which
+  // drops the connection, over and over (see messageLimit.ts). So the context goes out a slice at
+  // a time, newest first, since those are the messages on screen. One after another, too: the
+  // loader merges whatever is asked within the same few milliseconds back into a single filter.
+  const loadFrom = async (urls: string[], events: TrustedEvent[]) => {
+    for (const slice of chunk(CONTEXT_SLICE, sortEventsDesc(events))) {
+      if (controller.signal.aborted) return
+
+      await loadSlice(urls, slice)
     }
   }
 

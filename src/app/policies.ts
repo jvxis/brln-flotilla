@@ -27,6 +27,7 @@ import {
 import type {AppPolicy, IApp} from "@welshman/app"
 import {app, logger, appPolicies, session} from "@app/core"
 import {makeSocketPolicyAuthRetry} from "@app/authRetry"
+import {socketPolicyMessageLimit} from "@app/messageLimit"
 import {BLOCKED_RELAYS, PLATFORM_RELAYS} from "@app/env"
 import {userSettingsValues, getSetting, RelayAuthMode} from "@app/settings"
 
@@ -226,6 +227,8 @@ export const socketPolicy: AppPolicy = $app => {
     // again costs nothing; a browser extension would put its prompt back up every half minute.
     // See authRetry.ts for why the authentication needs asking again at all.
     makeSocketPolicyAuthRetry(() => session.get()?.method === "nip46"),
+    // A message a relay won't read drops the connection on every reconnect; see messageLimit.ts
+    socketPolicyMessageLimit,
   ]
 
   $app.pool.socketPolicies.push(...policies)

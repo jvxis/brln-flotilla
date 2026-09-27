@@ -180,6 +180,20 @@ Limited to `nip46` sessions: a remote signer never refuses, it is only slow; a b
 
 Upstream candidate: **yes, and the real fix belongs there.** `tryCatch` should return the handled promise, not the original one — every caller that expects `undefined` on failure is affected, not only authentication.
 
+### 16. No message a relay won't read, and a room's context in slices
+
+`src/app/messageLimit.ts`, wired into `socketPolicy` in `src/app/policies.ts`; `loadFrom` in `src/app/feeds.ts`.
+
+**The status going round Not Connected, Connecting, Authenticating and Connected, reported on 27/09/2026 after moving between rooms and back to Open Bar, cured only by a reload.** Not the same defect as patch 15: the console was clean, and the relay logged a new connection from the member every 2.5 s for four minutes, each lasting about a second; nginx showed each one receiving about 1.4 KB — the challenge, the authentication's OK, a few answers — before closing.
+
+A relay reads at most 512 KB in one message (khatru's default, and so every relay the club runs), and one that is sent more drops the connection with a 1009 instead of refusing it. A 523 KB request sent to the club's relay by hand came back closed in 1.2 s, and the relay logs nothing. The chat builds such a request: opening a room hands everything the browser already holds for it to the feed context in one go, which asks for the reactions and comments of all of them at once — each id named twice, 67 bytes a name — and the loader merges requests made within 50 ms into a single filter. Open Bar has 80,149 messages; about 7,700 in memory are enough.
+
+One such request drops the connection once. The loop is welshman's: when a connection that had been open for more than five seconds drops, `socketPolicyLifecycle` replays what is pending at once, before the loader's `CLOSE` for the abandoned request has left the queue. The `CLOSE` goes out, the request goes back in as pending, and nobody owns it any more: it is sent again on every connection, and every connection drops. The harness (a khatru with the default limit, the app's socket policies, a connection aged six seconds, the app's loader) showed exactly that: the request finished at 6.6 s and the socket kept dropping and reopening to the end of the run, 12 connections in 30 s. With this patch, one connection in 30 s, the oversized request refused before leaving and the next ones served in 200 ms.
+
+Two changes. `messageLimit.ts` never lets a message over 500,000 bytes leave a socket: it is taken off the send queue before it goes out, a warning names its size, and whoever waits on it gets the `CLOSED` or `OK false` a relay would have sent. `feeds.ts` asks for a room's context 250 events at a time, newest first, one slice after another so the loader can't merge them back, and the follow-up deletion requests the same way.
+
+Upstream candidate: yes, both halves. The replay that resurrects a closed request is a welshman bug in its own right.
+
 ## Updating from upstream
 
 ```sh
