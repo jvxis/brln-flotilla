@@ -142,7 +142,11 @@ Asking "does the subscription exist?" is a proxy, and the proxy is what lied. No
 
 Reopening aborts the controller and clears it rather than calling `receiver.stop()`. `stop()` also does `removeAllListeners()`, and every request in flight registers its own listener there; stripping it would turn a signature that is merely slow into one that hangs forever.
 
-Upstream candidate: yes. The library should reopen on close, and its requests should carry a deadline.
+**Reopening the subscription is not enough either; the socket goes too (0.1.45, 27/09/2026).** The version above asked the right question and, on hearing "no", fixed the wrong thing. The console showed the loop plainly — "the remote signer did not answer; reopening the listener" every thirty seconds, for as long as the page stayed open. A socket to the club's pairing relay had gone half open: the server had let it go, the browser still thought it alive. Each fresh subscription went down the same dead line, followed by the ping meant to detect it, and only a reload made new sockets.
+
+So `reopen` now calls `pool.remove(url)` for every relay of the broker before restarting the subscription, and the next request dials again. To reach those sockets the broker is given a pool of ours: the default one is created and kept inside `@welshman/signer`, out of reach. The pool travels in the broker's runtime params only; the session saved in storage is left as it was. Removing a socket is safe for an answer already on its way, because the club's pairing relay holds answers for a client that is reconnecting and the new subscription has no `since`.
+
+Upstream candidate: yes. The library should reopen on close — the socket, not only the subscription — and its requests should carry a deadline.
 
 ## Updating from upstream
 
