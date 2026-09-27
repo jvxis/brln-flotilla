@@ -50,8 +50,7 @@ const withDeadline = <T>(promise: Promise<T>, ms: number) =>
 // The pool the signer talks through, built the way welshman builds its default one.
 //
 // The broker falls back to a pool of its own, created once and hidden inside @welshman/signer.
-// Handing it this one instead is what lets the watch reach the sockets, which is the whole fix
-// of 27/09/2026: see `reopen` below.
+// Handing it this one instead is what lets the watch reach the sockets.
 const signerPool = () => {
   const pool = new Pool()
 
@@ -60,33 +59,64 @@ const signerPool = () => {
   return pool
 }
 
-const keepListening = (broker: Nip46Broker, pool: Pool) => {
+// A broker and the pool it talks through, built from the saved session. The relays are narrowed
+// to the ones this page can reach (see `reachableRelays`); the session itself is never touched.
+const buildBroker = (data: Nip46BrokerParams) => {
+  const pool = signerPool()
+  const broker = new Nip46Broker({...data, relays: reachableRelays(data.relays), context: {pool}})
+
+  return {pool, broker}
+}
+
+// How many pings in a row may go unanswered before the broker is thrown away and rebuilt.
+const SILENT_PINGS_BEFORE_REBUILD = 2
+
+// What the watch can see of a broker, logged whenever the signer goes quiet.
+//
+// On 27/09/2026 a tab stuck in "Authenticating" was sending NOTHING: none of its requests reached
+// the pairing relay, and no socket was opened in ninety seconds of watching, while the signer and
+// the relay answered the member's other devices within the second. The stall was inside the
+// broker, before sending, and nothing on screen said where. These three values say it: a queue
+// that grows while `processing` stays true is a sender stuck on one request; `listening` false is a
+// receiver with no subscription at all.
+const describe = (broker: Nip46Broker) => ({
+  queued: broker.sender.queue.length,
+  processing: broker.sender.processing,
+  listening: Boolean(broker.receiver.abortController),
+})
+
+const watchSigner = (
+  signer: Nip46Signer,
+  data: Nip46BrokerParams,
+  first: {pool: Pool; broker: Nip46Broker},
+) => {
+  let current = first
+
   // One ping at a time. If the signer is mute the previous one is still hanging on its
   // deadline, and firing another only piles up requests nobody will answer.
   let asking = false
 
-  // Reopen the subscription for real, on sockets that are new.
+  // Pings in a row with no answer.
+  let silent = 0
+
+  // Reopen the subscription on sockets that are new.
   //
-  // The version of 26/09 reopened the SUBSCRIPTION and kept the SOCKET, and on 27/09 the console
-  // showed what that costs: "the remote signer did not answer; reopening the listener", every
-  // thirty seconds, for as long as the page stayed open. A socket to the club's pairing relay
-  // had gone half open -- the server had let it go, the browser still thought it alive -- and
-  // each fresh subscription went down the same dead line, followed by the ping that was meant to
-  // detect it. Only a reload made new sockets, which is why a reload was the only cure.
+  // Enough for a socket that went half open -- the server let it go, the browser still thinks it
+  // alive -- which was the diagnosis behind 0.1.45. It was not enough on 27/09, because the stall
+  // was not in the socket; it stays as the cheap first step, and `rebuild` below is the one that
+  // ends a stall wherever it lives.
   //
-  // `pool.remove` cleans the socket up and forgets it, so the next request dials again. It is
-  // safe for an answer already on its way: the club's pairing relay holds answers for a client
-  // that is reconnecting (signerrelay/mailbox.go), and the new subscription has no `since`, so it
-  // receives what was held. It is also harmless for a relay that never connects -- the node's
-  // own one, behind a certificate the browser does not trust -- which fails as it already did.
+  // `pool.remove` cleans a socket up and forgets it, so the next request dials again. Safe for an
+  // answer already on its way: the club's pairing relay holds answers for a client that is
+  // reconnecting (signerrelay/mailbox.go), and the new subscription has no `since`.
   //
   // Deliberately not `receiver.stop()`, which also does `removeAllListeners()`. Every request in
   // flight registers its own listener on the receiver and removes it when the answer arrives, so
   // stopping would strip a signature that is merely slow of the listener waiting for it -- and
-  // since welshman's requests have no deadline, that turns a slow signature into one that hangs
-  // forever. Aborting the controller and clearing it does the one thing needed: `start()` sees no
-  // controller and opens a fresh subscription, while every listener stays where it was.
+  // since welshman's requests have no deadline, a slow signature would hang forever.
   const reopen = () => {
+    const {broker, pool} = current
+
     for (const url of broker.params.relays) {
       pool.remove(url)
     }
@@ -104,25 +134,78 @@ const keepListening = (broker: Nip46Broker, pool: Pool) => {
     })
   }
 
+  // Throw the broker away and build another, doing in place what a reload does.
+  //
+  // A reload was the one cure that always worked, and 27/09 showed why: the stall lives in the
+  // broker object, so only a new broker ends it -- new sockets under the old one did not. This is
+  // the reload without the reload: the same session, a fresh broker, and the page left alone.
+  //
+  // The app keeps the signer it was handed, so the signer stays the same object and only what it
+  // delegates to changes. `sign` and `getPubkey` read `signer.broker` on every call, but `nip04`
+  // and `nip44` captured the old broker's methods when the signer was built, so they are rebound
+  // too -- in place, in case something kept a reference to those objects.
+  //
+  // The old broker is let go, not `cleanup()`ed: aborting its listener and dropping its sockets is
+  // all it needs, and the requests still waiting on it were never going to be answered.
+  const rebuild = () => {
+    const old = current
+
+    current = buildBroker(data)
+
+    signer.broker = current.broker
+    signer.nip04.encrypt = current.broker.nip04Encrypt
+    signer.nip04.decrypt = current.broker.nip04Decrypt
+    signer.nip44.encrypt = current.broker.nip44Encrypt
+    signer.nip44.decrypt = current.broker.nip44Decrypt
+
+    current.broker.receiver.start().catch(error => {
+      console.warn("Could not listen to the remote signer:", error)
+    })
+
+    try {
+      old.broker.receiver.abortController?.abort()
+    } catch (error) {
+      console.warn("Could not abort the old remote signer listener:", error)
+    }
+
+    old.pool.clear()
+  }
+
   const check = async () => {
     if (asking) return
 
     asking = true
 
     try {
-      await withDeadline(broker.ping(), PING_TIMEOUT)
+      await withDeadline(current.broker.ping(), PING_TIMEOUT)
+
+      if (silent > 0) {
+        console.info(`The remote signer is answering again, after ${silent} silent ping(s).`)
+      }
+
+      silent = 0
     } catch {
-      // Could be the deaf subscription, could be the signer asleep. Reopening serves both, and
-      // costs nothing when things were fine.
-      console.warn("The remote signer did not answer; reopening the listener.")
-      reopen()
+      silent += 1
+
+      console.warn(
+        `The remote signer did not answer (${silent} in a row).`,
+        describe(current.broker),
+      )
+
+      if (silent >= SILENT_PINGS_BEFORE_REBUILD) {
+        console.warn("Rebuilding the remote signer connection, as a reload would.")
+        rebuild()
+        silent = 0
+      } else {
+        reopen()
+      }
     } finally {
       asking = false
     }
   }
 
   // On the way up there is no subscription yet, so this is a plain start, not the full cycle.
-  broker.receiver.start().catch(error => {
+  current.broker.receiver.start().catch(error => {
     console.warn("Could not listen to the remote signer:", error)
   })
 
@@ -135,8 +218,6 @@ const keepListening = (broker: Nip46Broker, pool: Pool) => {
     window.addEventListener("focus", check)
     window.addEventListener("beforeunload", () => clearInterval(interval))
   }
-
-  return broker
 }
 
 // Addresses that only exist inside someone's own network.
@@ -193,15 +274,17 @@ const reachableRelays = (relays: string[]) => {
 
 // Same method name as the handler it replaces, so sessions saved before this keep working.
 //
-// The pool and the narrowed relay list go into the broker's runtime params only. The session
-// saved in storage is `data`, untouched, so nothing is lost from the pairing itself.
+// The pool, the narrowed relay list and any rebuilt broker live in the runtime objects only. The
+// session saved in storage is `data`, untouched, so nothing is lost from the pairing itself.
 export const nip46WithWatch = defineSessionHandler({
   method: "nip46",
   getSigner: (data: Nip46BrokerParams) => {
-    const pool = signerPool()
-    const relays = reachableRelays(data.relays)
+    const first = buildBroker(data)
+    const signer = new Nip46Signer(first.broker)
 
-    return new Nip46Signer(keepListening(new Nip46Broker({...data, relays, context: {pool}}), pool))
+    watchSigner(signer, data, first)
+
+    return signer
   },
 })
 

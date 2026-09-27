@@ -25,7 +25,8 @@ import {
   makeAppPolicyAuth,
 } from "@welshman/app"
 import type {AppPolicy, IApp} from "@welshman/app"
-import {app, logger, appPolicies} from "@app/core"
+import {app, logger, appPolicies, session} from "@app/core"
+import {makeSocketPolicyAuthRetry} from "@app/authRetry"
 import {BLOCKED_RELAYS, PLATFORM_RELAYS} from "@app/env"
 import {userSettingsValues, getSetting, RelayAuthMode} from "@app/settings"
 
@@ -217,7 +218,15 @@ const mostlyRestrictedPolicy = (socket: Socket) => {
 // Socket policies are installed on the pool rather than the app, so wrap them in an app policy
 // to get the same construction/cleanup lifecycle as everything else.
 export const socketPolicy: AppPolicy = $app => {
-  const policies = [makeBlockPolicy($app), trustPolicy, mostlyRestrictedPolicy]
+  const policies = [
+    makeBlockPolicy($app),
+    trustPolicy,
+    mostlyRestrictedPolicy,
+    // Only for a remote signer. It never refuses, it is only slow now and then, and asking it
+    // again costs nothing; a browser extension would put its prompt back up every half minute.
+    // See authRetry.ts for why the authentication needs asking again at all.
+    makeSocketPolicyAuthRetry(() => session.get()?.method === "nip46"),
+  ]
 
   $app.pool.socketPolicies.push(...policies)
 

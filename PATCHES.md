@@ -146,6 +146,10 @@ Reopening aborts the controller and clears it rather than calling `receiver.stop
 
 So `reopen` now calls `pool.remove(url)` for every relay of the broker before restarting the subscription, and the next request dials again. To reach those sockets the broker is given a pool of ours: the default one is created and kept inside `@welshman/signer`, out of reach. The pool travels in the broker's runtime params only; the session saved in storage is left as it was. Removing a socket is safe for an answer already on its way, because the club's pairing relay holds answers for a client that is reconnecting and the new subscription has no `since`.
 
+**A correction, and a last resort (0.1.47, 27/09/2026).** The half-open socket was real but it was not what kept the chat in "Authenticating" — that is patch 15, in the relay's authentication, not in the path to the signer. What this patch does is still worth keeping, and a harness now proves it: with the chat's own code against a local pairing relay and a test signer, behind a proxy that can freeze connections without closing them, the watch recovers from a half-open socket (reopen, 43 s), from a clean drop (welshman reconnects by itself, 3 s) and from the network going away (two silent pings, then a rebuild).
+
+The rebuild is new in 0.1.47. After two pings in a row with no answer the watch throws the broker away and builds another from the saved session — in place, what a reload does. The app keeps the signer it was handed, so the signer stays the same object; `sign` and `getPubkey` read `signer.broker` on every call, while `nip04` and `nip44` captured the old broker's methods at construction and are rebound. Each silent ping also logs `{queued, processing, listening}` — the sender's queue, whether it is stuck on a request, whether the receiver has a subscription at all — so the next stall says where it is instead of leaving it to be guessed.
+
 Upstream candidate: yes. The library should reopen on close — the socket, not only the subscription — and its requests should carry a deadline.
 
 ### 14. A public page does not dial the signer's private-network relays
@@ -157,6 +161,24 @@ A signer on a LightningOS node puts the node's own pairing relay in the pairing 
 When the page's own host is public, relays on private networks leave the broker's list: 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16, Tailscale's 100.64/10, `localhost`, `.local`, `.lan`, `.internal`, `.home.arpa`, and the IPv6 loopback, unique-local and link-local ranges. Only when something is left — a pairing whose only relay is private keeps it, and fails as it did, rather than being left with none. The narrowed list lives in the broker's runtime params; the saved session is untouched.
 
 Upstream candidate: maybe. The rule is general, but whether a pairing link should carry a relay the client may not reach is the signer's decision, not the client's.
+
+### 15. An authentication whose signature timed out is asked again
+
+`src/app/authRetry.ts`, wired into `socketPolicy` in `src/app/policies.ts` for `nip46` sessions only.
+
+**This is the root cause of the "Authenticating" that only a reload cured, reported since 20/09/2026 — and patches 13 and 14 did not touch it.** Measured on 27/09 and reproduced in a harness before any fix was written.
+
+`AuthState.doAuth` in `@welshman/net` does `await tryCatch(() => sign(template), logError)` and, when that comes back empty, marks `DeniedSignature`. But `@welshman/lib`'s `tryCatch` attaches its handler to the promise and **returns the same promise, still rejecting**. So the error is logged — *"Failed to sign auth event: Signing timed out"* — and thrown again at the `await`: `doAuth` rejects before the line that would mark the refusal, the rejection escapes as *"Uncaught (in promise) Signing timed out"*, and the socket stays in `PendingSignature` for good. Nothing concludes it, nothing refuses it, and nothing asks again, because a relay only sends a challenge on a new connection.
+
+A signature fails that way whenever it takes longer than the thirty seconds `signWithOptions` allows — for a remote signer, any hiccup: its node restarting (a LightningOS upgrade, on 27/09) or the path to it breaking just when the relay asks. Patch 13 cannot beat it: the watch needs up to forty seconds to notice a broken path.
+
+The harness (a relay requiring NIP-42, the chat's own `remoteSigner.ts` behind a freezable proxy, welshman's own auth policy): with the path frozen while the relay asked and restored six seconds after the signature gave up, the console showed exactly the two lines members had been sending in screenshots, the signer signed normally again in 206 ms, and the authentication was still `pending_signature` two and a half minutes later. With this patch, it asked again at 35 s and was `ok` 0.2 s after the path came back.
+
+The patch treats a signature that outlives the timeout (35 s) as failed and puts the socket back to `Requested` — what welshman's own `retryAuth` does first — so the app's auth policy signs again with the same signer and the same `shouldAuth`. It stays out of `DeniedSignature` on purpose: in `PendingSignature` welshman keeps the requests made while waiting and sends them once authenticated, so the rooms fill in by themselves. It reads the socket's current status rather than the event's, because welshman emits `PendingSignature` from inside `Requested` and the late event would otherwise cancel the retry — which the harness caught.
+
+Limited to `nip46` sessions: a remote signer never refuses, it is only slow; a browser extension would have its prompt put back up every half minute.
+
+Upstream candidate: **yes, and the real fix belongs there.** `tryCatch` should return the handled promise, not the original one — every caller that expects `undefined` on failure is affected, not only authentication.
 
 ## Updating from upstream
 
