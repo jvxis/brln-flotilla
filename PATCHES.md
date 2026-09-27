@@ -194,6 +194,16 @@ Two changes. `messageLimit.ts` never lets a message over 500,000 bytes leave a s
 
 Upstream candidate: yes, both halves. The replay that resurrects a closed request is a welshman bug in its own right.
 
+### 17. A signer that doesn't implement `switch_relays` can still log in
+
+`tolerateSwitchRelays` in `src/app/nip46.ts`, applied to the brokers built by `LogInBunker.svelte` (bunker link) and `Nip46Controller` (QR code).
+
+welshman's `Nip46Broker.connect` and `waitForNostrconnect` call `switch_relays` right after the signer accepts and await it, so a signer that answers that optional method with an error turns an accepted connection into an exception. Amethyst 1.13 does exactly that (*"unsupported method: switch_relays"*), and on 27/09/2026 a founder pairing it was told *"Something went wrong, please try again!"* every time, after the signer had already said yes.
+
+Reproduced with Amethyst's own CLI signer (`amy bunker`, 1.16.0) against `chat.br-ln.com`: `connect` ok, `switch_relays` refused, nothing more. With the patch, against the same signer: `switch_relays` refused and logged, `get_public_key` ok, `sign_event` ok, and the chat lands on the home screen logged in. On a refusal the broker keeps the relays it already has, which is what nostr-tools does.
+
+Upstream candidate: yes — reported by someone else the same day as coracle-social/welshman#64.
+
 ## Updating from upstream
 
 ```sh

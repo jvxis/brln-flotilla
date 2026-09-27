@@ -26,7 +26,7 @@
   import {clearModals} from "@app/modal"
   import {setChecked} from "@app/notifications"
   import {pushToast} from "@app/toast"
-  import {NIP46_PERMS} from "@app/nip46"
+  import {NIP46_PERMS, tolerateSwitchRelays} from "@app/nip46"
 
   // The login screen can open this straight in QR mode, so someone logging in
   // again does not have to go through the bunker link form first.
@@ -98,7 +98,7 @@
       controller.loading.set(true)
 
       const {clientSecret} = controller
-      const broker = new Nip46Broker({relays, clientSecret, signerPubkey})
+      const broker = tolerateSwitchRelays(new Nip46Broker({relays, clientSecret, signerPubkey}))
 
       // A signer says nothing at all to a device it does not know -- on purpose,
       // so that a second signer holding the same identity cannot refuse on its

@@ -50,13 +50,37 @@ export const NIP46_PERMS =
     .map(k => `sign_event:${k}`)
     .join(",")
 
+// `switch_relays` lets a signer move the conversation to other relays right after connecting. It is
+// optional, and welshman treats a signer that doesn't implement it as a failed login: `connect`
+// awaits it and throws on the error. Amethyst (1.13) answers "unsupported method: switch_relays",
+// so a member pairing it on 27/09/2026 was told "Something went wrong" after the signer had
+// already accepted -- reproduced with Amethyst's own CLI signer (`amy bunker`). nostr-tools keeps
+// the current relays in that case, and so does this. Reported upstream as welshman#64.
+export const tolerateSwitchRelays = (broker: Nip46Broker) => {
+  const switchRelays = broker.switchRelays
+
+  broker.switchRelays = async () => {
+    try {
+      return await switchRelays()
+    } catch (e) {
+      console.info("The signer does not switch relays; keeping these.", (e as Error)?.message || e)
+
+      return broker.params.relays
+    }
+  }
+
+  return broker
+}
+
 export class Nip46Controller {
   url = writable("")
   bunker = writable("")
   loading = writable(false)
   clientSecret = makeSecret()
   abortController = new AbortController()
-  broker = new Nip46Broker({clientSecret: this.clientSecret, relays: SIGNER_RELAYS})
+  broker = tolerateSwitchRelays(
+    new Nip46Broker({clientSecret: this.clientSecret, relays: SIGNER_RELAYS}),
+  )
   onNostrConnect: (response: Nip46ResponseWithResult) => void
 
   constructor({onNostrConnect}: {onNostrConnect: (response: Nip46ResponseWithResult) => void}) {
