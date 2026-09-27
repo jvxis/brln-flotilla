@@ -35,7 +35,9 @@
   const {initialMode = "bunker"}: Props = $props()
 
   const back = () => {
-    if (mode === "connect") {
+    if ($loading) {
+      stopWaiting?.()
+    } else if (mode === "connect") {
       selectBunker()
     } else {
       history.back()
@@ -62,6 +64,14 @@
   // Long enough for a phone waking up and a signer tab in the background, short
   // enough that nobody watches a spinner wondering whether it is broken.
   const SIGNER_TIMEOUT = 20000
+
+  // Answering the connection itself can take much longer. On a phone the signer is another app:
+  // it may ask for approval, and the person has to switch to it, approve and come back. With 20
+  // seconds the chat had given up by then -- reported on 27/09/2026 by a member pairing a signer
+  // app on Android. So the wait is long, says what to do, and "Go back" ends it.
+  const CONNECT_TIMEOUT = 120000
+
+  let stopWaiting: (() => void) | undefined
 
   const {loading, bunker} = controller
 
@@ -98,8 +108,19 @@
       // the same from here, which is the likeliest reason to be waiting.
       const result = await Promise.race([
         broker.connect(connectSecret, NIP46_PERMS),
-        sleep(SIGNER_TIMEOUT).then(() => undefined),
+        sleep(CONNECT_TIMEOUT).then(() => undefined),
+        new Promise<"cancelled">(resolve => {
+          stopWaiting = () => resolve("cancelled")
+        }),
       ])
+
+      stopWaiting = undefined
+
+      if (result === "cancelled") {
+        broker.cleanup()
+
+        return
+      }
 
       if (result === undefined) {
         broker.cleanup()
@@ -107,7 +128,8 @@
         return pushToast({
           theme: "error",
           message:
-            "The signer did not answer. Open its tab, create a new connection there, and try again.",
+            "The signer did not answer. Keep the signer app open and approve the connection there. " +
+            "A bunker link usually works only once, so if this one was already used, create a new one.",
         })
       }
 
@@ -197,6 +219,12 @@
       <BunkerConnect {controller} />
     {:else}
       <BunkerUrl {controller} />
+      {#if $loading}
+        <p class="text-sm opacity-75">
+          Waiting for the signer. If it asks, approve the connection in the signer app, then come
+          back here.
+        </p>
+      {/if}
       <Button class={cx(`button button-${$bunker ? "neutral" : "primary"}`)} onclick={selectConnect}
         >Log in with a QR code instead</Button>
       {#if isIos}
@@ -205,9 +233,9 @@
     {/if}
   </ModalBody>
   <ModalFooter>
-    <Button class="button button-link" onclick={back} disabled={$loading}>
+    <Button class="button button-link" onclick={back}>
       <Icon icon={AltArrowLeft} />
-      Go back
+      {$loading ? "Cancel" : "Go back"}
     </Button>
     {#if mode === "bunker"}
       <Button type="submit" class="button button-primary" disabled={$loading || !$bunker}>
