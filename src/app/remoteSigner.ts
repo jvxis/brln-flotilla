@@ -139,16 +139,69 @@ const keepListening = (broker: Nip46Broker, pool: Pool) => {
   return broker
 }
 
+// Addresses that only exist inside someone's own network.
+const isPrivateHost = (host: string) => {
+  const h = host.toLowerCase().replace(/^\[|\]$/g, "")
+
+  if (h === "localhost" || /\.(local|lan|internal|home\.arpa)$/.test(h)) return true
+
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/)
+
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])]
+
+    return (
+      a === 10 ||
+      a === 127 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254) ||
+      (a === 100 && b >= 64 && b <= 127)
+    )
+  }
+
+  return h === "::1" || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h)
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return ""
+  }
+}
+
+// The relays this page can actually reach.
+//
+// A signer on a node puts the node's own pairing relay in the pairing link, first, next to the
+// club's: the chat served by that same node reaches it without leaving the house. A chat served
+// from a public address never does. The node answers with a self-signed certificate, and a
+// browser refuses that on a WebSocket opened from another origin, with no prompt and no way to
+// accept it -- accepting the warning on the signer page does not carry over, which was measured
+// on 27/09/2026. So from here that relay was dialed on every start and every reopen, and failed
+// every time, filling the console with "wss://192.168.68.92:4448/pairing failed".
+//
+// Dropped only when the page is public and something else is left: a pairing whose only relay
+// is private keeps it, and fails as it did, rather than being left with none.
+const reachableRelays = (relays: string[]) => {
+  if (typeof window === "undefined" || isPrivateHost(window.location.hostname)) return relays
+
+  const reachable = relays.filter(url => !isPrivateHost(hostOf(url)))
+
+  return reachable.length > 0 ? reachable : relays
+}
+
 // Same method name as the handler it replaces, so sessions saved before this keep working.
 //
-// The pool goes into the broker's runtime params only. The session saved in storage is `data`,
-// untouched, so nothing that cannot be serialized ends up there.
+// The pool and the narrowed relay list go into the broker's runtime params only. The session
+// saved in storage is `data`, untouched, so nothing is lost from the pairing itself.
 export const nip46WithWatch = defineSessionHandler({
   method: "nip46",
   getSigner: (data: Nip46BrokerParams) => {
     const pool = signerPool()
+    const relays = reachableRelays(data.relays)
 
-    return new Nip46Signer(keepListening(new Nip46Broker({...data, context: {pool}}), pool))
+    return new Nip46Signer(keepListening(new Nip46Broker({...data, relays, context: {pool}}), pool))
   },
 })
 
