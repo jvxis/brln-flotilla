@@ -8,7 +8,7 @@ import {app, login, session} from "@app/core"
 import {wallet} from "@app/lightning"
 import {kv, ss, storage} from "@app/storage"
 import {deactivateCurrentPomadeSession} from "@app/pomade"
-import {useRemoteSignerWatch} from "@app/remoteSigner"
+import {SIGNER_PUBKEY_CHANGED, useRemoteSignerWatch} from "@app/remoteSigner"
 import {Push} from "@app/push"
 
 // Registered before any session is restored, so a remote signer session gets the watched
@@ -40,6 +40,7 @@ const toCurrentSession = (legacy: LegacySession): Session | undefined => {
             clientSecret: legacy.secret,
             signerPubkey: legacy.handler.pubkey,
             relays: legacy.handler.relays,
+            userPubkey: legacy.pubkey,
           })
         : undefined
     case "nip55":
@@ -104,11 +105,32 @@ export const restoreSession = async () => {
     }
   }
 
-  return session.subscribe($session => {
+  // The signer now holds another key than the one remembered: forget it and start over, so the
+  // next load asks the signer who the member is instead of showing the wrong identity.
+  const onPubkeyChanged = () => {
+    const $current = session.get()
+
+    if ($current?.method === "nip46") {
+      const data = {...($current.data as Record<string, unknown>)}
+
+      delete data.userPubkey
+
+      ss.set("session", {...$current, data}).then(() => window.location.reload())
+    }
+  }
+
+  window.addEventListener(SIGNER_PUBKEY_CHANGED, onPubkeyChanged)
+
+  const unsubscribe = session.subscribe($session => {
     if ($session) {
       ss.set("session", $session)
     }
   })
+
+  return () => {
+    window.removeEventListener(SIGNER_PUBKEY_CHANGED, onPubkeyChanged)
+    unsubscribe()
+  }
 }
 
 export const logout = async () => {

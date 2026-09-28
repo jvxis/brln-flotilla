@@ -204,6 +204,20 @@ Reproduced with Amethyst's own CLI signer (`amy bunker`, 1.16.0) against `chat.b
 
 Upstream candidate: yes — reported by someone else the same day as coracle-social/welshman#64.
 
+### 18. A remote signer's session remembers the member's pubkey
+
+`RemoteSignerData` and `trustRememberedPubkey` in `src/app/remoteSigner.ts`, `rememberPubkey` in `src/app/core.ts`, the `SIGNER_PUBKEY_CHANGED` handler in `src/app/session.ts`.
+
+A saved NIP-46 session held the pairing (`clientSecret`, `signerPubkey`, `relays`) but not the member's own pubkey, so every page load asked the signer who the member is and showed nothing until it answered, for at most fifteen seconds. A signer that is another app on a phone -- Amethyst in the background on Android -- often doesn't answer in time, and the member landed on the login screen on every reload with the session still saved. Reported by a member as issue #1 of this fork, with the console trace, on 27/09/2026.
+
+Reproduced with Amethyst's own CLI signer (`amy bunker`) put to sleep between login and reload: the login screen at 15.3 s. With this patch the saved session carries `userPubkey`, and the same reload is back on the home screen in 1 s.
+
+The login stores the pubkey the signer reported. Sessions saved before this get it on their next successful login, and a legacy session converts its own. On restore the signer is trusted with that pubkey, and asked in the background whether it still holds that key -- the NIP-46 sender doesn't wait on replies, so nothing queues behind the question. If the answer differs, the remembered pubkey is dropped and the page reloads, so the identity shown is never another than the signer's. Signatures are always the signer's own key regardless. Tested by planting a wrong pubkey in the session: warned, reloaded, back with the right one in 4 s.
+
+The pubkey is public and already on the device (for Amethyst it is the `signerPubkey` itself), and "Log Out" clears the session with it.
+
+Upstream candidate: yes -- welshman's `Nip46Signer` only caches the pubkey in memory.
+
 ## Updating from upstream
 
 ```sh

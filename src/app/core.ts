@@ -115,6 +115,19 @@ export const deriveUserItem = <T>(Ctor: Plugin<DerivedPlugin<T>>) =>
     })
   })
 
+// A remote signer's session remembers the member's pubkey once a login has learned it, so the next
+// page load doesn't have to ask the signer before showing anything (see RemoteSignerData in
+// remoteSigner.ts). Sessions saved before this pick it up on their next successful login.
+export const rememberPubkey = ($session: Session, pubkey: string): Session => {
+  if ($session.method !== "nip46") return $session
+
+  const data = $session.data as Record<string, unknown>
+
+  if (data.userPubkey === pubkey) return $session
+
+  return {...$session, data: {...data, userPubkey: pubkey}}
+}
+
 export const login = async ($session: Session) => {
   const $user = await User.fromSession($session)
 
@@ -126,7 +139,7 @@ export const login = async ($session: Session) => {
   // just to tear it down.
   appStore.get()?.cleanup()
   setApp(makeApp($user))
-  session.set($session)
+  session.set(rememberPubkey($session, $user.pubkey))
 }
 
 // Plugins bound to the current app, so `$profiles` in a component and `profiles.get()` in a

@@ -272,17 +272,56 @@ const reachableRelays = (relays: string[]) => {
   return reachable.length > 0 ? reachable : relays
 }
 
+// The member's own pubkey, kept in the session once a login has learned it (see `login` in
+// core.ts).
+//
+// Without it every page load asks the signer who the member is, and waits for the answer before
+// showing anything. A signer that is another app on a phone -- Amethyst in the background on
+// Android -- often doesn't answer within the fifteen seconds the restore allows, and the member was
+// shown the login screen on every reload with the session still saved (fork issue #1, reported on
+// 27/09/2026 and reproduced with Amethyst's own CLI signer asleep). The pubkey is public and already
+// on this device, so the identity comes back at once, and the signer is only needed to sign.
+export type RemoteSignerData = Nip46BrokerParams & {userPubkey?: string}
+
+// Fired when the signer turns out to hold another key than the one remembered, so whoever owns the
+// session can forget it. Signing as the wrong identity is not an option.
+export const SIGNER_PUBKEY_CHANGED = "brln:signer-pubkey-changed"
+
+const isHexPubkey = (value: unknown): value is string =>
+  typeof value === "string" && /^[0-9a-f]{64}$/.test(value)
+
+const trustRememberedPubkey = (signer: Nip46Signer, userPubkey: string) => {
+  signer.pubkey = userPubkey
+
+  // Checked in the background: nothing waits on it, and the sender does not hold other requests
+  // back while a reply is pending.
+  signer.broker
+    .getPublicKey()
+    .then(pubkey => {
+      if (pubkey && pubkey !== userPubkey) {
+        console.warn("The signer now holds another key than the one this session remembers.")
+        signer.pubkey = pubkey
+        window.dispatchEvent(new CustomEvent(SIGNER_PUBKEY_CHANGED, {detail: {pubkey}}))
+      }
+    })
+    .catch(() => {})
+}
+
 // Same method name as the handler it replaces, so sessions saved before this keep working.
 //
 // The pool, the narrowed relay list and any rebuilt broker live in the runtime objects only. The
 // session saved in storage is `data`, untouched, so nothing is lost from the pairing itself.
 export const nip46WithWatch = defineSessionHandler({
   method: "nip46",
-  getSigner: (data: Nip46BrokerParams) => {
+  getSigner: (data: RemoteSignerData) => {
     const first = buildBroker(data)
     const signer = new Nip46Signer(first.broker)
 
     watchSigner(signer, data, first)
+
+    if (isHexPubkey(data.userPubkey)) {
+      trustRememberedPubkey(signer, data.userPubkey)
+    }
 
     return signer
   },
