@@ -88,6 +88,11 @@ export const HOSTING_RELAY_DOMAIN = env("VITE_HOSTING_RELAY_DOMAIN")
 // resolved directly by the client.
 export const DUFFLEPUD_URL = env("VITE_DUFFLEPUD_URL")
 
+// Where the chat asks for a link's title, description and image. The club runs its own
+// (brln-link-preview in brln-community) so no third party learns which links members open;
+// kept apart from DUFFLEPUD_URL, which also turns on other features that need Coracle's server.
+export const LINK_PREVIEW_URL = env("VITE_LINK_PREVIEW_URL")
+
 export const PLAUSIBLE_URL = env("VITE_PLAUSIBLE_URL")
 
 export const PLAUSIBLE_DOMAIN = env("VITE_PLAUSIBLE_DOMAIN")

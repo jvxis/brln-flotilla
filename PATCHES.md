@@ -218,6 +218,18 @@ The pubkey is public and already on the device (for Amethyst it is the `signerPu
 
 Upstream candidate: yes -- welshman's `Nip46Signer` only caches the pubkey in memory.
 
+### 19. Link cards from the club's own server
+
+`LINK_PREVIEW_URL` in `src/app/env.ts`, used by `ContentLinkBlock.svelte`; `VITE_LINK_PREVIEW_URL` in `deploy/brln.env`.
+
+Flotilla draws a card for a link -- title, description, image -- with data from Coracle's Dufflepud server, which would learn every link the club's members open, from their own IP. The club's build had it off for that reason (`VITE_DUFFLEPUD_URL` empty, and CI refuses a build that references it), so links showed as bare text. Asked for on 28/09/2026.
+
+The club now runs the same job itself: `brln-link-preview` in brln-community, behind `https://chat.br-ln.com/preview`. The member's browser asks the club, and only the club's server visits the page. It refuses internal addresses at connect time (after DNS, so a rebinding name can't slip through), dials only ports 80 and 443, reads YouTube through oEmbed, caches, limits each address, and logs no link. The address is absolute because the same image runs in every node's LightningOS app, which asks the club's server too; the service allows any origin for that reason.
+
+A separate variable rather than `VITE_DUFFLEPUD_URL`, which also switches on features that expect Coracle's server. Without it the card falls back to Dufflepud if that is set, and to no card otherwise, as before.
+
+The card's image still loads from the site that published it, as it would if the member opened the link.
+
 ## Updating from upstream
 
 ```sh
