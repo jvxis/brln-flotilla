@@ -230,6 +230,17 @@ A separate variable rather than `VITE_DUFFLEPUD_URL`, which also switches on fea
 
 The card's image still loads from the site that published it, as it would if the member opened the link.
 
+### 20. A newcomer not yet admitted is told at once, sent to register, and let in when admitted
+
+`isRefusalOfTheWholeRelay` in `src/app/policies.ts`, `membersOnly` in `src/app/access.ts`, `SpaceJoin.svelte`, `SpaceAuthError.svelte`; `VITE_PLATFORM_ACCESS_URL` in `deploy/brln.env`.
+
+Walking the journey on 28/09/2026 as a newcomer whose npub the relay hadn't admitted -- someone who opened the chat within the minute registration takes, or registered another npub -- the chat showed a silent "Space Details" page for about thirty seconds, then an English error, then a "Request Access" button that sent a NIP-29 join request the club's relay can't grant and opened a second modal before reaching the Services dashboard.
+
+- **Told at once.** The relay turns a non-member away with "restricted: you are not a member of this relay", distinct from a refused room ("...of that group"). One such refusal now marks the space, instead of waiting until most requests had been refused; each new connection is judged afresh. In the harness the notice came 12 s after Next, most of it the login itself.
+- **In the members' language.** The notice is Portuguese first, English after, names the npub in use, and says a fresh registration takes up to a minute.
+- **One button to the right place.** Where the platform grants access on its own page (`PLATFORM_ACCESS_URL`), the join modal and the auth error both link straight to it: "Liberar meu acesso", now `services.br-ln.com/comunidade/acesso` rather than the dashboard.
+- **Let in without reloading.** The join modal asks again every 20 s for five minutes. The relay accepts a member's join request, so the first attempt that comes back clean completes the join and opens the space. Seen on the club's relay: refused join requests from the test at 16:02:03, 16:02:27, 16:02:51.
+
 ## Updating from upstream
 
 ```sh

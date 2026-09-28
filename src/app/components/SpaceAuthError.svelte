@@ -2,6 +2,7 @@
   import {displayRelayUrl} from "@welshman/util"
   import {parse, renderAsHtml} from "@welshman/content"
   import Button from "@lib/components/Button.svelte"
+  import Link from "@lib/components/Link.svelte"
   import AltArrowLeft from "@assets/icons/alt-arrow-left.svg?dataurl"
   import AltArrowRight from "@assets/icons/alt-arrow-right.svg?dataurl"
   import Icon from "@lib/components/Icon.svelte"
@@ -15,6 +16,7 @@
   import ModalFooter from "@lib/components/ModalFooter.svelte"
   import SpaceAccessRequest from "@app/components/SpaceAccessRequest.svelte"
   import {leaveSpace} from "@app/access"
+  import {PLATFORM_ACCESS_URL} from "@app/env"
   import {clearModals, navigate, pushModal} from "@app/modal"
 
   type Props = {
@@ -64,10 +66,18 @@
     </Button>
     <div class="flex gap-2">
       <Button class="button button-error" onclick={leave} disabled={loading}>Leave Space</Button>
-      <Button type="submit" class="button button-primary" disabled={loading}>
-        Request Access
-        <Icon icon={AltArrowRight} />
-      </Button>
+      <!-- A platform grants access on its own page, not through a join request to the relay -->
+      {#if PLATFORM_ACCESS_URL}
+        <Link external href={PLATFORM_ACCESS_URL} class="button button-primary">
+          Liberar meu acesso
+          <Icon icon={AltArrowRight} />
+        </Link>
+      {:else}
+        <Button type="submit" class="button button-primary" disabled={loading}>
+          Request Access
+          <Icon icon={AltArrowRight} />
+        </Button>
+      {/if}
     </div>
   </ModalFooter>
 </Modal>

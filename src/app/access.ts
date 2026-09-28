@@ -249,16 +249,25 @@ const formatAuthError = (status: AuthStatus, details?: string) => {
 // not a member of this relay" to every request, and all he read was this message and
 // "Connection Status: Error", for half an hour. Naming the key in use is what tells a
 // member the problem is the key, and tells anyone else which key to register.
-const membersOnly = () => {
+//
+// It also says what to do next, in the members' language first: the club's members read
+// Portuguese, and the chat around it is still in English (28/09/2026). A newcomer who opens the
+// chat within the minute the relay takes to admit them is told to wait, since the chat now
+// retries by itself (SpaceJoin).
+export const membersOnly = () => {
   const pubkey = app.get().user?.pubkey
 
   if (!pubkey) {
-    return "This space is for members only"
+    return "Este espaço é só para membros. This space is for members only."
   }
 
+  const npub = displayPubkey(pubkey)
+
   return (
-    `This space is for members only, and you are logged in as ${displayPubkey(pubkey)}, ` +
-    `which is not a member. If your membership is under another key, log in with that key.`
+    `A identidade ${npub} ainda não está liberada no clube. Se você acabou de registrá-la em ` +
+    `"Liberar meu acesso", espere até um minuto: o chat entra sozinho. Se a sua assinatura está ` +
+    `registrada com outra npub, entre com ela. — ${npub} isn't a club member yet. If you just ` +
+    `registered it, give it a minute; if your membership is under another key, log in with that one.`
   )
 }
 

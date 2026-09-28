@@ -135,14 +135,25 @@ const trustPolicy = (socket: Socket) => {
   }
 }
 
+// A relay that turns away the whole connection -- not a member of it, or banned from it -- says so
+// in so many words, and one refusal is enough to know. Counting until most requests had been
+// refused left a newcomer looking at a silent "Space Details" page for half a minute before being
+// told why (measured on 28/09/2026). Refusals of one room ("not a member of that group") are
+// ordinary for a member and don't count here.
+const isRefusalOfTheWholeRelay = (details: string) =>
+  /not a member of this relay|banned from this relay/.test(details)
+
 const mostlyRestrictedPolicy = (socket: Socket) => {
   let total = 0
   let refused = 0
+  let wholeRelay: string | undefined
 
   const pending = new Set<string>()
 
   const updateStatus = (error?: string) => {
-    if (total > 5 && refused > total / 2) {
+    if (wholeRelay) {
+      relaysMostlyRestricted.update(assoc(socket.url, wholeRelay))
+    } else if (total > 5 && refused > total / 2) {
       if (error) {
         return relaysMostlyRestricted.update(assoc(socket.url, error))
       }
@@ -163,11 +174,23 @@ const mostlyRestrictedPolicy = (socket: Socket) => {
       matchReason(RelayReasonPrefix.Blocked, details)
     ) {
       refused++
+
+      if (isRefusalOfTheWholeRelay(details)) {
+        wholeRelay = details
+      }
+
       updateStatus(details)
     }
   }
 
   const unsubscribers = [
+    // Each connection is judged afresh: someone admitted meanwhile reconnects as a member
+    on(socket, SocketEvent.Status, (status: string) => {
+      if (status === "open" && wholeRelay) {
+        wholeRelay = undefined
+        updateStatus()
+      }
+    }),
     on(socket, SocketEvent.Receive, (message: RelayMessage) => {
       if (isRelayOk(message)) {
         const [_, id, ok, details = ""] = message
