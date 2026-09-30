@@ -241,6 +241,16 @@ Walking the journey on 28/09/2026 as a newcomer whose npub the relay hadn't admi
 - **One button to the right place.** Where the platform grants access on its own page (`PLATFORM_ACCESS_URL`), the join modal and the auth error both link straight to it: "Liberar meu acesso", now `services.br-ln.com/comunidade/acesso` rather than the dashboard.
 - **Let in without reloading.** The join modal asks again every 20 s for five minutes. The relay accepts a member's join request, so the first attempt that comes back clean completes the join and opens the space. Seen on the club's relay: refused join requests from the test at 16:02:03, 16:02:27, 16:02:51.
 
+### 21. A guardian is never a space of its own
+
+`src/app/guardioes.ts`, `makeEventPath` and `makeEventPermalink` in `src/app/routes.ts`, `src/routes/spaces/[relay]/+layout.ts`; `src/app/mirrors.ts` now takes its definitions from `guardioes.ts`.
+
+On 30/09/2026 Jaime found himself at `/spaces/relay3.br-ln.com/geral` without having chosen anything: the menu listed 6 of the 13 rooms, and a reload kept it that way. The three relays held the same events and each served all 13 rooms to a member; the chat had simply opened a guardian as if it were another club. The path of any event -- a quote, a home item, a pin, a badge -- was built from the first relay that delivered it, and with three relays delivering the same thing, the first is sometimes a guardian. In a guardian's space the menu only knows the rooms whose metadata arrived from that relay, since what was already in the browser isn't fetched again.
+
+- **Event paths and permalinks** replace a guardian with the club's relay (`noEspacoDoClube`) before choosing where to go.
+- **A guardian's address redirects** to the same page in the club's space before the page mounts, for links already saved or shared.
+- **Nothing changes during an outage**: the club's space already reads from all three relays (`relaysDoEspaco`) and counts what a guardian delivers as seen on the club (`ligaOsGuardioes`).
+
 ## Updating from upstream
 
 ```sh

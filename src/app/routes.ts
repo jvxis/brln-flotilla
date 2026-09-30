@@ -1,7 +1,7 @@
 import {get, writable} from "svelte/store"
 import * as nip19 from "nostr-tools/nip19"
 import {page} from "$app/stores"
-import {identity} from "@welshman/lib"
+import {identity, uniq} from "@welshman/lib"
 import type {TrustedEvent} from "@welshman/util"
 import {
   CLASSIFIED,
@@ -23,6 +23,7 @@ import {app, messagingRelayLists, user} from "@app/core"
 import {makeChatId} from "@app/chats"
 import {entityLink, PLATFORM_URL, PLATFORM_RELAYS} from "@app/env"
 import {decodeRelay, encodeRelay} from "@app/relays"
+import {noEspacoDoClube} from "@app/guardioes"
 import {DM_KINDS} from "@app/content"
 import {ROOM} from "@app/rooms"
 import {navigate, pushModal} from "@app/modal"
@@ -187,7 +188,11 @@ export const makeContentPath = (url: string, kind: number, idOrAddress?: string)
   }
 }
 
-export const makeEventPath = (event: TrustedEvent, urls: string[]) => {
+export const makeEventPath = (event: TrustedEvent, relayUrls: string[]) => {
+  // O endereço de um evento sai do primeiro relay que o entregou, e o primeiro pode ser um
+  // guardião. Um guardião não é espaço: ver guardioes.ts.
+  const urls = uniq(relayUrls.map(noEspacoDoClube))
+
   if (DM_KINDS.includes(event.kind)) {
     return makeChatPath([event.pubkey, ...tagValues(hexTags("p"), event.tags)])
   }
@@ -237,7 +242,9 @@ export const makeEventPath = (event: TrustedEvent, urls: string[]) => {
 }
 
 export const makeEventPermalink = (event: TrustedEvent, url?: string) => {
-  const urls = url ? [url] : Array.from(app.get().tracker.getRelays(event.id))
+  const urls = uniq(
+    (url ? [url] : Array.from(app.get().tracker.getRelays(event.id))).map(noEspacoDoClube),
+  )
   const path = makeEventPath(event, urls)
 
   if (path.includes("://")) {

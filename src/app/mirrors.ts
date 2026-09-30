@@ -1,7 +1,7 @@
 import {uniq} from "@welshman/lib"
 import {on} from "@welshman/lib"
 import {app} from "@app/core"
-import {PLATFORM_RELAYS, SPACE_MIRRORS} from "@app/env"
+import {espacoDoClube, guardioes, temGuardioes} from "@app/guardioes"
 
 // Os guardiões: relays que guardam a mesma conversa que o relay do clube, para que ela continue
 // existindo se a máquina do clube cair. Eles se mantêm iguais entre si sozinhos, por replicação;
@@ -21,15 +21,10 @@ import {PLATFORM_RELAYS, SPACE_MIRRORS} from "@app/env"
 // Não é uma mentira conveniente: o evento realmente pertence ao clube, e é dele que o guardião o
 // copiou. O que o tracker guardava era por onde ele entrou, que é outra pergunta.
 
-// O espaço a que os guardiões pertencem. Um só, que é como este clube existe.
-const espacoDoClube = PLATFORM_RELAYS[0]
-
-const guardioes = new Set(SPACE_MIRRORS.filter(url => url !== espacoDoClube))
-
-export const temGuardioes = Boolean(espacoDoClube) && guardioes.size > 0
-
 // relaysDoEspaco diz de quais relays um espaço é feito. Para o clube, os três; para qualquer
 // outro espaço, ele mesmo -- porque um guardião do clube não guarda espaço de mais ninguém.
+export {temGuardioes}
+
 export const relaysDoEspaco = (url: string) =>
   temGuardioes && url === espacoDoClube ? uniq([url, ...guardioes]) : [url]
 
