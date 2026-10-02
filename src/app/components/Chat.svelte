@@ -245,6 +245,27 @@
     for (const pubkey of others) {
       $app.use(MessagingRelayLists).load(pubkey)
     }
+
+    // One look isn't enough: on 29/09/2026 Jaime opened a conversation with FREEDOM right after the
+    // relay restarted, the lookup came back empty, and the conversation stayed locked on "Direct
+    // messages are not enabled" until a hard reload -- his messaging relays were on the club's relay
+    // all along. So whoever is still missing is asked again, a few times, before giving up.
+    let tries = 0
+
+    const retry = setInterval(() => {
+      const missing = others.filter(pk => !$messagingRelayLists.has(pk))
+
+      if (missing.length === 0 || ++tries > 6) {
+        clearInterval(retry)
+        return
+      }
+
+      for (const pubkey of missing) {
+        $app.use(MessagingRelayLists).forceLoad(pubkey)
+      }
+    }, 5000)
+
+    return () => clearInterval(retry)
   })
 
   setTimeout(() => {

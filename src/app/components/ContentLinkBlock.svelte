@@ -1,23 +1,59 @@
 <script module lang="ts">
-  import {postJson, simpleCache} from "@welshman/lib"
+  import {sleep} from "@welshman/lib"
   import {dufflepud, DUFFLEPUD_URL, LINK_PREVIEW_URL} from "@app/env"
 
-  // Cache previews by url so the same link isn't re-fetched across renders/instances.
-  const loadPreview = simpleCache(async ([url]: [string]) => {
+  type Preview = {url?: string; title?: string; description?: string; image?: string}
+
+  // Opening the Library asks for every link on every shelf at once, and the club's service lets an
+  // address ask only so many times a minute (429). Those used to be cached as failures for the
+  // whole visit, so most of a shelf showed bare links (02/10/2026). A busy answer now waits out the
+  // service's minute and asks again, and no failure is kept: the next time the link is drawn, it
+  // asks once more.
+  const WAITS = [5_000, 20_000, 40_000]
+
+  const previews = new Map<string, Promise<Preview>>()
+
+  const fetchPreview = async (url: string): Promise<Preview> => {
     const endpoint = LINK_PREVIEW_URL || (DUFFLEPUD_URL ? dufflepud("link/preview") : "")
 
     if (!endpoint) {
       throw new Error("Link previews are disabled")
     }
 
-    const json = await postJson(endpoint, {url})
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({url}),
+      })
 
-    if (!json?.title && !json?.image) {
-      throw new Error("Failed to load link preview")
+      if (res.status === 429 && attempt < WAITS.length) {
+        await sleep(WAITS[attempt])
+        continue
+      }
+
+      const json = res.ok ? await res.json().catch(() => undefined) : undefined
+
+      if (!json?.title && !json?.image) {
+        throw new Error("Failed to load link preview")
+      }
+
+      return json
+    }
+  }
+
+  // Cache previews by url so the same link isn't re-fetched across renders/instances.
+  const loadPreview = (url: string) => {
+    let promise = previews.get(url)
+
+    if (!promise) {
+      promise = fetchPreview(url)
+      previews.set(url, promise)
+      promise.catch(() => previews.delete(url))
     }
 
-    return json
-  })
+    return promise
+  }
 </script>
 
 <script lang="ts">
@@ -71,8 +107,19 @@
     return undefined
   }
 
+  // An image made on first request -- GitHub's release cards, for one -- can fail the first time and
+  // be there a moment later, so a failed image is tried once more before it's dropped.
+  let imageRetried = false
+
   const onError = () => {
     hideImage = true
+
+    if (!imageRetried) {
+      imageRetried = true
+      setTimeout(() => {
+        hideImage = false
+      }, 4000)
+    }
   }
 
   const expand = () =>
@@ -128,7 +175,7 @@
         <div class="flex flex-col gap-2 p-4">
           <strong class="overflow-hidden text-ellipsis whitespace-nowrap"
             >{preview.title || displayUrl(url)}</strong>
-          <p>{ellipsize(preview.description, 140)}</p>
+          <p>{ellipsize(preview.description ?? "", 140)}</p>
         </div>
       </div>
     </Link>
