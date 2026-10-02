@@ -850,6 +850,9 @@ test("BR⚡LN an old relay list is offered the club's relays", async ({seed, as}
 
   await expect(check).toHaveCount(0)
 
+  // The notice goes as soon as the new list is in the repository, before it is on the wire.
+  await expect.poll(() => getPublishedEvents(page.context(), RELAYS).length).toBeGreaterThan(0)
+
   const [list] = getPublishedEvents(page.context(), RELAYS)
   const tags = list.tags.filter(tag => tag[0] === "r")
 
