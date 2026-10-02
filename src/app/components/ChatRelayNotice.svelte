@@ -12,7 +12,7 @@
   // O botão acrescenta o que falta; não substitui a lista. A caixa é da pessoa, e ela pode
   // ter relays próprios que não cabe a nós apagar.
   import {uniq} from "@welshman/lib"
-  import {MessagingRelayLists} from "@welshman/app"
+  import {MessagingRelayLists, RelayLists} from "@welshman/app"
   import Mailbox from "@assets/icons/mailbox.svg?dataurl"
   import Icon from "@lib/components/Icon.svelte"
   import Button from "@lib/components/Button.svelte"
@@ -32,7 +32,45 @@
     atuais.length > 0 ? relaysDoClube.filter(url => !atuais.includes(url)) : [],
   )
 
+  // A lista de relays (kind 10002) é por onde os outros acham o que a pessoa escreve -- inclusive
+  // esta caixa. Quem chegou com uma lista de antes do clube, que não nomeia relay nenhum dele,
+  // fica difícil de achar: em 02/10/2026 o André não conseguia responder ao Jaime por isso. E um
+  // app de fora (o Flotilla oficial) nem se autentica num relay que a lista não cita. Pelo chat
+  // não há outra tela para corrigi-la, então esta tarja faz isso: acrescenta os relays do clube
+  // para ler e escrever, sem tirar nenhum dos que a pessoa já tem.
+  const listasDeRelays = $app.use(RelayLists).index.$
+
+  const listaDeRelays = $derived($listasDeRelays.get(pubkey))
+
+  const semOClube = $derived.by(() => {
+    const leitura = listaDeRelays?.readUrls() ?? []
+    const escrita = listaDeRelays?.writeUrls() ?? []
+
+    return (
+      leitura.length + escrita.length > 0 &&
+      relaysDoClube.some(url => !leitura.includes(url) || !escrita.includes(url))
+    )
+  })
+
   let aplicando = $state(false)
+  let acrescentando = $state(false)
+
+  const acrescentarOClube = async () => {
+    acrescentando = true
+
+    try {
+      await $app
+        .use(RelayLists)
+        .update(writer => {
+          for (const url of relaysDoClube) {
+            writer.addReadUrl(url).addWriteUrl(url)
+          }
+        })
+        .then(publish)
+    } finally {
+      acrescentando = false
+    }
+  }
 
   const aplicar = async () => {
     aplicando = true
@@ -62,6 +100,26 @@
     </div>
     <Button class="button button-primary button-sm shrink-0" onclick={aplicar} disabled={aplicando}>
       {aplicando ? "Adding..." : "Add The Rest"}
+    </Button>
+  </div>
+{/if}
+{#if semOClube}
+  <div class="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+    <div class="flex min-w-0 items-start gap-3">
+      <Icon icon={Mailbox} size={4} class="mt-1 shrink-0" />
+      <div class="flex min-w-0 flex-col gap-1">
+        <strong class="text-sm">Relay List Without The Club</strong>
+        <p class="text-sm opacity-75">
+          Your relay list doesn't name the club's servers, so other members' apps look for your
+          messages elsewhere and may tell them you can't receive direct messages.
+        </p>
+      </div>
+    </div>
+    <Button
+      class="button button-primary button-sm shrink-0"
+      onclick={acrescentarOClube}
+      disabled={acrescentando}>
+      {acrescentando ? "Adding..." : "Add The Club"}
     </Button>
   </div>
 {/if}

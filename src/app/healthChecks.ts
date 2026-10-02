@@ -120,34 +120,6 @@ export class HealthChecks {
           .then(publish),
     },
     {
-      // A lista de relays (kind 10002) é por onde os outros acham o que a pessoa escreve --
-      // inclusive a caixa de diretas. Quem chegou com uma lista de antes do clube, que não nomeia
-      // relay nenhum dele, fica difícil de achar: em 02/10/2026 o André não conseguia responder
-      // ao Jaime por isso. E um app de fora (o Flotilla oficial) nem se autentica num relay que
-      // a lista da pessoa não cita. Pelo chat não há outra tela para corrigir a lista, então o
-      // aviso faz isso: acrescenta os relays do clube para ler e escrever, sem tirar nenhum dos
-      // que a pessoa já tem.
-      title: "Relay List Without The Club",
-      description:
-        "Your relay list doesn't name the club's servers, so other members' apps look for your " +
-        "messages and profile elsewhere and may tell them you can't receive direct messages.",
-      action: "Add The Club",
-      isPending: context =>
-        context.readRelays.length + context.writeRelays.length > 0 &&
-        relaysDoClube.some(
-          url => !context.readRelays.includes(url) || !context.writeRelays.includes(url),
-        ),
-      apply: () =>
-        this.app
-          .use(RelayLists)
-          .update(writer => {
-            for (const url of relaysDoClube) {
-              writer.addReadUrl(url).addWriteUrl(url)
-            }
-          })
-          .then(publish),
-    },
-    {
       title: "Too Many Inbox Relays",
       description:
         "You have more inbox relays than is really necessary, which can affect resource usage.",

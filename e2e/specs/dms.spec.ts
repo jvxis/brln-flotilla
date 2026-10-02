@@ -837,7 +837,8 @@ test("BR⚡LN an old relay list is offered the club's relays", async ({seed, as}
   const space = scenario.space("space").url
   const other = scenario.space("other").url
 
-  const page = await as(users.bob, "/home", {
+  // The club has no home page, so the notice lives where direct messages are (ChatRelayNotice).
+  const page = await as(users.bob, "/chat", {
     env: {VITE_INDEXER_RELAYS: space, VITE_PLATFORM_RELAYS: space},
   })
 
