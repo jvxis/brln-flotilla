@@ -60,6 +60,7 @@ import {LIVEKIT_PARTICIPANTS} from "@app/call"
 import {REACTION_KINDS, CONTENT_KINDS, makeCommentFilter} from "@app/content"
 import {INDEXER_RELAYS, PLATFORM_RELAYS} from "@app/env"
 import {ligaOsGuardioes, relaysDoEspaco} from "@app/mirrors"
+import {ligaLeituraDoClube} from "@app/publish"
 import {FEATURED_CONTENT_D} from "@app/featured"
 import {decodeRelay} from "@app/relays"
 import {Settings} from "@app/settings"
@@ -613,7 +614,14 @@ export const syncApplicationData = () => {
 
   // A ponte dos guardiões vem primeiro: ela precisa estar ouvindo antes que o primeiro evento
   // chegue por um deles, senão esse evento fica marcado só com o guardião e não aparece.
-  const unsubscribers = [ligaOsGuardioes(), syncRelays(), syncUserData(), syncSpaces(), syncDMs()]
+  const unsubscribers = [
+    ligaOsGuardioes(),
+    ligaLeituraDoClube(),
+    syncRelays(),
+    syncUserData(),
+    syncSpaces(),
+    syncDMs(),
+  ]
 
   unsubscribe = () => unsubscribers.forEach(call)
 

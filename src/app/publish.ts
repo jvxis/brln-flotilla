@@ -11,7 +11,9 @@ import {
   ROOMS,
   SEARCH_RELAYS,
 } from "@welshman/util"
+import {Router} from "@welshman/app"
 import type {Command} from "@welshman/app"
+import {app} from "@app/core"
 import {PLATFORM_RELAYS} from "@app/env"
 import {relaysDoEspaco} from "@app/mirrors"
 
@@ -52,3 +54,31 @@ export const publish = (command: Command) =>
       ? uniq([...comOsGuardioes(command.relays), ...PLATFORM_RELAYS])
       : comOsGuardioes(command.relays),
   )
+
+// E o que se lê de uma pessoa -- a caixa de diretas, a lista de relays, o perfil -- se procura
+// nos relays de escrita que a lista dela (kind 10002) declara. Muita gente chegou ao clube com
+// uma lista antiga que não nomeia relay nenhum do clube, e a dela continua sendo lida assim: em
+// 02/10/2026 o André não conseguia responder ao Jaime ("Direct messages are not enabled"), porque
+// a 10002 do Jaime, de 2024, só nomeia nos.lol, relay.nostr.band e nostr.wine, e a caixa de
+// diretas dele (10050) só existe nos relays do clube. Então quem lê o outbox de alguém pergunta
+// também aos relays do clube, que guardam a identidade de todo associado. Chamado a cada app
+// novo (syncApplicationData), já que um login troca o app e com ele o Router.
+type ComOutbox = {outboxRelays: (pubkey?: string) => Promise<string[]>}
+
+const comLeitura = new WeakSet<Router>()
+
+export const ligaLeituraDoClube = () => {
+  const router = app.get().use(Router)
+
+  if (PLATFORM_RELAYS.length > 0 && !comLeitura.has(router)) {
+    comLeitura.add(router)
+
+    const outbox = router as unknown as ComOutbox
+    const original = outbox.outboxRelays
+
+    outbox.outboxRelays = async (pubkey?: string) =>
+      pubkey ? uniq([...(await original(pubkey)), ...comOsGuardioes(PLATFORM_RELAYS)]) : []
+  }
+
+  return () => {}
+}

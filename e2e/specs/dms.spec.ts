@@ -1,7 +1,7 @@
 import {npubEncode} from "nostr-tools/nip19"
 import type {Locator, Page} from "@playwright/test"
 import {DAY, HOUR, MINUTE} from "@welshman/lib"
-import {DIRECT_MESSAGE, REACTION} from "@welshman/util"
+import {DIRECT_MESSAGE, REACTION, RELAYS} from "@welshman/util"
 import {MessagingRelayList} from "@welshman/domain"
 import {
   bubble,
@@ -12,6 +12,7 @@ import {
   composerDisabled,
   composerEnabled,
   expect,
+  getPublishedEvents,
   forgetRelay,
   makeTestUser,
   pageBar,
@@ -772,4 +773,86 @@ test("US-109 keep a conversation you have already read", async ({seed, as}) => {
   await alice.goto(roomPath(url, "general"))
 
   await expect(alice.locator(".room__item")).toHaveCount(0)
+})
+
+// BR⚡LN, 02/10/2026: a member whose relay list predates the club names only strangers' relays, and
+// a direct message to him is read from those -- where his messaging relays aren't. André couldn't
+// answer Jaime ("Direct messages are not enabled"): Jaime's kind 10002, from 2024, names only public
+// relays, and his kind 10050 lives on the club's relays alone. The club's relays hold every member's
+// identity (src/app/publish.ts), so reading anyone's outbox asks them as well.
+const seedMemberWithOldRelayList = (space: SeededSpace, stranger: SeededSpace) => {
+  space.join(users.alice)
+  space.profile(users.alice, {name: "Alice Anchor"})
+  space.relayList(users.alice)
+  space.messagingRelayList(users.alice)
+
+  space.join(users.bob)
+  space.profile(users.bob, {name: "Bob Barnacle"})
+  // His relay list names only a relay that has none of his club identity.
+  space.relayList(users.bob, {read: [stranger.url], write: [stranger.url]})
+  space.messagingRelayList(users.bob)
+}
+
+test("BR⚡LN a member with an old relay list can still be messaged", async ({seed, as}) => {
+  const scenario = await seed(({relay}) => {
+    seedMemberWithOldRelayList(relay("space"), relay("other"))
+  })
+
+  const page = await as(users.alice, chatPath(users.bob.pubkey), {
+    env: {
+      VITE_INDEXER_RELAYS: scenario.space("space").url,
+      VITE_PLATFORM_RELAYS: scenario.space("space").url,
+    },
+  })
+
+  await sendDm(page, "can you read this?")
+
+  await expect(bubble(page, "can you read this?")).toBeVisible()
+  await expect(page.getByText("Direct messages are not enabled")).toHaveCount(0)
+})
+
+// The same member without the club's relays configured: what André saw, so this proves the case above
+// reproduces it rather than passing for some other reason.
+test("BR⚡LN without the club's relays an old relay list hides a member's messaging relays", async ({
+  seed,
+  as,
+}) => {
+  const scenario = await seed(({relay}) => {
+    seedMemberWithOldRelayList(relay("space"), relay("other"))
+  })
+
+  const page = await as(users.alice, chatPath(users.bob.pubkey), {
+    env: {VITE_INDEXER_RELAYS: scenario.space("space").url},
+  })
+
+  await expect(page.getByText("Direct messages are not enabled")).toBeVisible()
+})
+
+// And the member with the old list is offered to fix it at the source, keeping what he had.
+test("BR⚡LN an old relay list is offered the club's relays", async ({seed, as}) => {
+  const scenario = await seed(({relay}) => {
+    seedMemberWithOldRelayList(relay("space"), relay("other"))
+  })
+
+  const space = scenario.space("space").url
+  const other = scenario.space("other").url
+
+  const page = await as(users.bob, "/home", {
+    env: {VITE_INDEXER_RELAYS: space, VITE_PLATFORM_RELAYS: space},
+  })
+
+  const check = page.getByText("Relay List Without The Club")
+
+  await expect(check).toBeVisible()
+
+  await page.getByRole("button", {name: "Add The Club"}).click()
+
+  await expect(check).toHaveCount(0)
+
+  const [list] = getPublishedEvents(page.context(), RELAYS)
+  const tags = list.tags.filter(tag => tag[0] === "r")
+
+  // Read and write both, and the relay he already had is still there.
+  expect(tags).toContainEqual(["r", space])
+  expect(tags.map(tag => tag[1])).toContain(other)
 })
