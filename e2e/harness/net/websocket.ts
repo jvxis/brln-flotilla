@@ -23,11 +23,21 @@ export type PublishedEvent = {
   event: TrustedEvent
 }
 
+// A subscription the client holds open on one socket, and how to end it from the relay's side.
+type OpenSubscription = {
+  url: string
+  id: string
+  filters: unknown[]
+  close: (reason: string) => void
+}
+
 type Traffic = {
   transcript: TranscriptEntry[]
   leaks: Set<string>
   forgotten: Set<string>
   silenced: Set<string>
+  subscriptions: Map<string, OpenSubscription>
+  dropping: Array<(url: string, message: RelayMessage) => boolean>
 }
 
 const trafficStore = makeContextStore<Traffic>("installWebSocketRoutes")
@@ -83,7 +93,13 @@ const serve = (traffic: Traffic, zooid: Zooid, route: WebSocketRoute) => {
     return openEmptyRelay()
   })
 
+  // Subscriptions are keyed per socket, since two sockets may reuse an id.
+  const socketKey = `${url}#${Math.random()}`
+  const subscriptionKey = (id: string) => `${socketKey}:${id}`
+
   connection.onMessage(message => {
+    if (traffic.dropping.some(drop => drop(url, message))) return
+
     traffic.transcript.push({url, direction: "toClient", message})
     route.send(JSON.stringify(message))
   })
@@ -93,11 +109,35 @@ const serve = (traffic: Traffic, zooid: Zooid, route: WebSocketRoute) => {
 
     if (message) {
       traffic.transcript.push({url, direction: "toRelay", message})
+
+      if (isClientReq(message)) {
+        const [, id, ...filters] = message as unknown as [string, string, ...unknown[]]
+
+        traffic.subscriptions.set(subscriptionKey(id), {
+          url,
+          id,
+          filters,
+          close: reason => {
+            traffic.subscriptions.delete(subscriptionKey(id))
+            connection.send([ClientMessageType.Close, id] as ClientMessage)
+            route.send(JSON.stringify([RelayMessageType.Closed, id, reason]))
+          },
+        })
+      } else if (message[0] === ClientMessageType.Close) {
+        traffic.subscriptions.delete(subscriptionKey(message[1] as string))
+      }
+
       connection.send(message)
     }
   })
 
-  route.onClose(() => connection.close())
+  route.onClose(() => {
+    for (const key of [...traffic.subscriptions.keys()]) {
+      if (key.startsWith(`${socketKey}:`)) traffic.subscriptions.delete(key)
+    }
+
+    connection.close()
+  })
 }
 
 /**
@@ -115,6 +155,8 @@ export const installWebSocketRoutes = (context: BrowserContext, zooid: Zooid) =>
     leaks: new Set(),
     forgotten: new Set(),
     silenced: new Set(),
+    subscriptions: new Map(),
+    dropping: [],
   })
 
   return context.routeWebSocket(
@@ -174,5 +216,38 @@ export const assertNoLeaks = (context: BrowserContext) => {
         ...Array.from(leaks).map(url => `  ${url}`),
       ].join("\n"),
     )
+  }
+}
+
+// The relay ends every open subscription whose filters match, with a CLOSED the client did not ask
+// for, the way a relay does when it restarts a feed or sheds load. Returns how many it closed.
+export const closeSubscriptions = (
+  context: BrowserContext,
+  matches: (filters: unknown[]) => boolean,
+  reason = "error: the relay closed this subscription",
+) => {
+  const open = [...trafficStore.get(context).subscriptions.values()].filter(sub =>
+    matches(sub.filters),
+  )
+
+  for (const sub of open) {
+    sub.close(reason)
+  }
+
+  return open.length
+}
+
+// Messages from the relays that never reach the client while the returned function is not called,
+// like events lost on a connection that dropped and came back.
+export const dropFromRelays = (
+  context: BrowserContext,
+  drop: (url: string, message: RelayMessage) => boolean,
+) => {
+  const {dropping} = trafficStore.get(context)
+
+  dropping.push(drop)
+
+  return () => {
+    dropping.splice(dropping.indexOf(drop), 1)
   }
 }

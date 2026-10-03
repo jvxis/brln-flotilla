@@ -3,7 +3,7 @@ import type {ClientOptions} from "@pomade/core"
 import type {Wallet} from "@welshman/util"
 import {nip01, nip07, nip46, nip55, pomade, toSession} from "@welshman/app"
 import type {Session} from "@welshman/app"
-import {getTestEvents, maybeGetTestSession} from "@lib/test/session"
+import {getTestEvents, maybeGetTestSession, takeTestDecryptFailure} from "@lib/test/session"
 import {app, login, session} from "@app/core"
 import {wallet} from "@app/lightning"
 import {kv, ss, storage} from "@app/storage"
@@ -98,6 +98,14 @@ export const restoreSession = async () => {
   // loads with Repository.load, which clears the repository before inserting, so these have to
   // wait for it or they are wiped before anything reads them.
   if (testSession) {
+    app
+      .get()
+      .user?.wrapSigner((method, thunk) =>
+        method === "nip44.decrypt" && takeTestDecryptFailure()
+          ? Promise.reject(new Error("test: the signer is away"))
+          : thunk(),
+      )
+
     await storage.get()?.ready
 
     for (const event of getTestEvents()) {

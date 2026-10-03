@@ -39,6 +39,7 @@ import {
   RelayLists,
   RoomLists,
   Sync,
+  Wraps,
   makeRoomKey,
 } from "@welshman/app"
 import {
@@ -81,21 +82,19 @@ type SyncOpts = {
   filters: Filter[]
 }
 
-// How many times in a row the live subscription may be lost without the relay ever serving it
-// before we stop asking. Being served resets the count, so a long session that rides out many
-// dropped connections keeps listening.
-const LISTEN_ATTEMPTS = 5
+// The live subscription is asked for again every time it is lost, however it was lost, and the
+// wait between attempts doubles up to a minute. Being served resets the wait. Until 0.1.56 it gave
+// up after five losses in a row and ignored a relay closing it for any reason other than
+// authentication; either way it went quiet for good. On 03/10/2026 a Node Check alert only showed
+// once the member reloaded the page.
+const LISTEN_RETRY_MAX = 60_000
+
+const listenRetryDelay = (failures: number) =>
+  Math.min(LISTEN_RETRY_MAX, 1000 * 2 ** (failures - 1))
 
 // How far back a subscription reaches from the moment the listener started waiting to ask, so
 // that nothing published around that moment goes missing.
 const LISTEN_OVERLAP = 60
-
-// A refusal that only says we asked before authenticating. `auth-required` is the one the relay
-// sends; `restricted` is what a closed relay answers to a socket that hasn't authenticated yet,
-// and is only this when the socket really hadn't.
-const isRefusedBeforeAuth = (reason: string, url: string) =>
-  reason.startsWith("auth-required") ||
-  (reason.startsWith("restricted") && app.get().pool.get(url).auth.status !== AuthStatus.Ok)
 
 // A gift wrap's timestamp is deliberately wrong. NIP-59 backdates it by a random amount of up
 // to 100,000 seconds -- about 28 hours -- so a relay can't tell when a conversation happened.
@@ -182,9 +181,7 @@ const listen = ({url, signal, filters}: SyncOpts) => {
       signal.removeEventListener("abort", abort)
       controller.abort()
 
-      if (failures <= LISTEN_ATTEMPTS) {
-        start(1000)
-      }
+      start(listenRetryDelay(failures))
     }
 
     network.get().request({
@@ -199,11 +196,9 @@ const listen = ({url, signal, filters}: SyncOpts) => {
       onEose: () => {
         failures = 0
       },
-      onClosed: reason => {
-        if (isRefusedBeforeAuth(reason, url)) {
-          resubscribe()
-        }
-      },
+      // Whatever the reason, a closed subscription is asked for again: the refusal before
+      // authentication was the only one handled, and any other left the listener silent.
+      onClosed: () => resubscribe(),
       onDisconnect: resubscribe,
     })
   }
@@ -524,16 +519,71 @@ const syncSpaces = () => {
 
 // DMs
 
+// A direct message must never wait for a reload. Besides the live subscription, each messaging
+// relay is asked again for recent wraps every DM_CATCHUP_INTERVAL, and at once when the tab comes
+// back into view or the network comes back -- the moments a live subscription is most likely to
+// have been lost without anyone noticing. A wrap's date is backdated (see WRAP_DRIFT), so "recent"
+// reaches back past the whole drift.
+const DM_CATCHUP_INTERVAL = 90_000
+
+// Welshman's Wraps remembers a wrap it failed to open and never tries it again in that session:
+// a remote signer that was slow or reconnecting at that moment (the LOS signer, over NIP-46) costs
+// the message until the page is reloaded. So a failed wrap is handed back to the queue on every
+// catch-up, up to UNWRAP_ATTEMPTS times, which is plenty for a signer that was only away and still
+// bounded for a wrap that really can't be opened.
+const UNWRAP_ATTEMPTS = 6
+
+const unwrapAttempts = new Map<string, number>()
+
+const retryFailedUnwraps = () => {
+  const wraps = app.get().use(Wraps)
+  const ids = [...wraps.failedUnwraps].filter(id => (unwrapAttempts.get(id) ?? 0) < UNWRAP_ATTEMPTS)
+
+  if (ids.length === 0) return
+
+  for (const id of ids) {
+    unwrapAttempts.set(id, (unwrapAttempts.get(id) ?? 0) + 1)
+    wraps.failedUnwraps.delete(id)
+  }
+
+  for (const wrap of app.get().repository.query([{ids}])) {
+    wraps.enqueue(wrap)
+  }
+}
+
 const syncDMRelay = (url: string, pubkey: string) => {
   const controller = new AbortController()
+  const filters = [{kinds: [WRAP], "#p": [pubkey]}]
 
-  pullAndListen({
-    url,
-    signal: controller.signal,
-    filters: [{kinds: [WRAP], "#p": [pubkey]}],
-  })
+  pullAndListen({url, signal: controller.signal, filters})
 
-  return () => controller.abort()
+  const catchUp = () => {
+    if (controller.signal.aborted) return
+
+    retryFailedUnwraps()
+
+    app
+      .get()
+      .use(Sync)
+      .pull({relays: [url], filters: filters.map(f => ({...f, since: now() - WRAP_DRIFT}))})
+      .catch(noop)
+  }
+
+  const onVisible = () => {
+    if (document.visibilityState === "visible") catchUp()
+  }
+
+  const interval = setInterval(catchUp, DM_CATCHUP_INTERVAL)
+
+  document.addEventListener("visibilitychange", onVisible)
+  window.addEventListener("online", catchUp)
+
+  return () => {
+    controller.abort()
+    clearInterval(interval)
+    document.removeEventListener("visibilitychange", onVisible)
+    window.removeEventListener("online", catchUp)
+  }
 }
 
 const syncDMs = () => {

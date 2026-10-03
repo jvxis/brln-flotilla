@@ -6,6 +6,9 @@ import {MessagingRelayList} from "@welshman/domain"
 import {
   bubble,
   chatItems,
+  closeSubscriptions,
+  dropFromRelays,
+  refuseDecryptions,
   chatList,
   chatPath,
   composer,
@@ -859,4 +862,100 @@ test("BR⚡LN an old relay list is offered the club's relays", async ({seed, as}
   // Read and write both, and the relay he already had is still there.
   expect(tags).toContainEqual(["r", space])
   expect(tags.map(tag => tag[1])).toContain(other)
+})
+
+// A direct message must never wait for a reload (03/10/2026: a Node Check alert only showed once
+// the member pressed F5). Each of these takes one way a message used to go missing on an open page
+// and asks for it to show up anyway, with the page left alone.
+const seedPair = (seed: Parameters<Parameters<typeof test>[2]>[0]["seed"]) =>
+  seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    seedPerson(space, user.alice, "Alice Anchor")
+    seedPerson(space, user.bob, "Bob Barnacle")
+    space.messagingRelayList(user.alice)
+    space.messagingRelayList(user.bob)
+    space.dm(user.bob, [user.alice], "earlier today", at(4, HOUR))
+  })
+
+const asksForWraps = (filters: unknown[]) =>
+  (filters as {kinds?: number[]}[]).some(filter => filter.kinds?.includes(1059))
+
+const tabComesBack = (page: Page) =>
+  page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")))
+
+const openPair = async (as: Parameters<Parameters<typeof test>[2]>[0]["as"]) => {
+  const alice = await as(users.alice, "/chat")
+
+  await expect(chatItems(alice).filter({hasText: "earlier today"})).toBeVisible()
+
+  const bob = await as(users.bob, chatPath(users.alice.pubkey))
+
+  return {alice, bob}
+}
+
+test("BR⚡LN a direct message arrives after the relay closes the live subscription", async ({
+  seed,
+  as,
+}) => {
+  await seedPair(seed)
+
+  const {alice, bob} = await openPair(as)
+
+  await expect.poll(() => closeSubscriptions(alice.context(), asksForWraps)).toBeGreaterThan(0)
+
+  await sendDm(bob, "after the relay closed it")
+
+  // Well inside the catch-up interval: this is the listener asking again, not the safety net
+  await expect(chatItems(alice).filter({hasText: "after the relay closed it"})).toBeVisible({
+    timeout: 20_000,
+  })
+})
+
+test("BR⚡LN a direct message lost on the way is fetched when the tab comes back", async ({
+  seed,
+  as,
+}) => {
+  await seedPair(seed)
+
+  const {alice, bob} = await openPair(as)
+  const lost = chatItems(alice).filter({hasText: "lost on the way"})
+  const restore = dropFromRelays(
+    alice.context(),
+    (_, message) => message[0] === "EVENT" && (message[2] as {kind?: number})?.kind === 1059,
+  )
+
+  await sendDm(bob, "lost on the way")
+  await alice.waitForTimeout(3000)
+  await expect(lost).toHaveCount(0)
+
+  restore()
+  await tabComesBack(alice)
+
+  await expect(lost).toBeVisible({timeout: 15_000})
+})
+
+test("BR⚡LN a direct message the signer could not open is opened again", async ({seed, as}) => {
+  await seedPair(seed)
+
+  const {alice, bob} = await openPair(as)
+  const message = chatItems(alice).filter({hasText: "the signer was away"})
+
+  await refuseDecryptions(alice, 1)
+  await sendDm(bob, "the signer was away")
+
+  // The wrap arrived and its one refusal was spent on it, and still nothing shows
+  await expect
+    .poll(() =>
+      alice.evaluate(
+        () => (window as {__TEST_DECRYPT_FAILURES__?: number}).__TEST_DECRYPT_FAILURES__,
+      ),
+    )
+    .toBe(0)
+  await alice.waitForTimeout(1000)
+  await expect(message).toHaveCount(0)
+
+  await tabComesBack(alice)
+
+  await expect(message).toBeVisible({timeout: 15_000})
 })
