@@ -7,6 +7,7 @@ import {
   composer,
   dialog,
   expect,
+  getTranscript,
   makeTestUser,
   message,
   messageActions,
@@ -18,6 +19,7 @@ import {
   pageBar,
   pathPattern,
   pickEmoji,
+  rewriteFromRelays,
   roomLink,
   roomPath,
   send,
@@ -1055,4 +1057,59 @@ test("US-115 connect a wallet without losing the zap you were composing", async 
   await expect(zap.getByRole("button", {name: "Connect a lightning wallet"})).toHaveCount(0)
   await expect(zap.getByRole("button", {name: "Send Zap"})).toBeVisible()
   await expect(amount).toHaveValue("210")
+})
+
+// 04/10/2026: every morning, after a night with the computer asleep, the chat opened on "Access
+// Error: Failed to authenticate: auth event too much in the past" until a reload. A signature that
+// finishes long after it was asked for is dated too far back, and the relay refuses it; that is not
+// a refusal of the member, so the chat signs again with the current time and shows no error.
+test("BR⚡LN a stale authentication is signed again, without an access error", async ({
+  seed,
+  as,
+}) => {
+  const scenario = await seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    space.room("general", {name: "General"})
+    space.join(user.alice, "general")
+    space.message(user.alice, "general", "bom dia", at(1, HOUR))
+  })
+
+  const {url} = scenario.space("space")
+  const alice = await as(users.alice, roomPath(url, "general"))
+
+  await expect(message(alice, "bom dia")).toBeVisible()
+
+  const auths = () =>
+    getTranscript(alice.context()).filter(
+      entry => entry.direction === "toRelay" && entry.message[0] === "AUTH",
+    )
+  const authIds = () => new Set(auths().map(entry => (entry.message[1] as {id: string}).id))
+
+  let refused = 0
+
+  rewriteFromRelays(alice.context(), (_, relayMessage) => {
+    if (refused === 0 && relayMessage[0] === "OK" && authIds().has(relayMessage[1] as string)) {
+      refused += 1
+
+      return [
+        "OK",
+        relayMessage[1],
+        false,
+        "invalid: Failed to authenticate: auth event too much in the past",
+      ] as unknown as typeof relayMessage
+    }
+  })
+
+  const before = auths().length
+
+  await alice.reload()
+
+  await expect(message(alice, "bom dia")).toBeVisible()
+  await expect.poll(() => refused).toBe(1)
+  // Signed again: one more authentication went out after the refused one. Counted by message, not
+  // by id: signed within the same second, the new one can have the same id.
+  await expect.poll(() => auths().length).toBeGreaterThanOrEqual(before + 2)
+  await alice.waitForTimeout(2000)
+  await expect(alice.getByRole("heading", {name: "Access Error"})).toHaveCount(0)
 })

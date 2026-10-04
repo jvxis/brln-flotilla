@@ -33,6 +33,25 @@ import type {Socket} from "@welshman/net"
 //
 // A real `DeniedSignature`, should one ever arrive, is asked again too, waiting longer each time.
 
+// A relay refuses an authentication signed more than ten minutes before it arrives ("auth event too
+// much in the past", nip42 in our relay library). That is not a refusal of the member: it happens
+// when a signature finishes long after it was asked for -- the computer slept through the night with
+// a request to the remote signer in flight, and the answer, dated before the sleep, went out on
+// waking. Every morning on 04/10/2026 that was "Access Error" over the chat until a reload. Signing
+// again now, with the current time, is all it needs, whatever the signer.
+export const isStaleAuth = (details?: string) =>
+  /auth event too much in the (past|future)/.test(details || "")
+
+// The refusal must never reach `Forbidden`: that is final in welshman, and socketPolicyAuthBuffer
+// then throws away the requests that were waiting for the authentication -- having already hidden
+// their auth-required refusals from the callers -- so a room stays on "Looking for messages" even
+// after signing again succeeds. Seen in the e2e harness. So the stale refusal is turned, as it is
+// set, into `Requested`: the auth policy signs again with the current time, and the waiting
+// requests go out once that is accepted. A device whose clock really is wrong is refused every
+// time; after STALE_TOLERATED in a row the refusal goes through as `Forbidden`, and the member reads
+// the relay's own words, which point at the clock.
+const STALE_TOLERATED = 3
+
 // Longer than the thirty seconds a signature is given, so a signature that is merely slow is left
 // alone and only one that has already failed is replaced.
 const STUCK_SIGNATURE = 35_000
@@ -45,6 +64,27 @@ export const makeSocketPolicyAuthRetry =
   (shouldRetry: (socket: Socket) => boolean) => (socket: Socket) => {
     let delay = FIRST_RETRY
     let timer: ReturnType<typeof setTimeout> | undefined
+    let staleRefusals = 0
+
+    const setStatus = socket.auth.setStatus.bind(socket.auth)
+
+    socket.auth.setStatus = (status: AuthStatus) => {
+      if (
+        status === AuthStatus.Forbidden &&
+        isStaleAuth(socket.auth.details) &&
+        socket.auth.challenge &&
+        staleRefusals < STALE_TOLERATED
+      ) {
+        staleRefusals += 1
+        console.info(`Authenticating to ${socket.url} again (the signature arrived too late).`)
+        socket.auth.request = undefined
+        socket.auth.details = undefined
+
+        return setStatus(AuthStatus.Requested)
+      }
+
+      return setStatus(status)
+    }
 
     const cancel = () => {
       if (timer) {
@@ -86,6 +126,7 @@ export const makeSocketPolicyAuthRetry =
 
       if (status === AuthStatus.Ok) {
         delay = FIRST_RETRY
+        staleRefusals = 0
         return
       }
 
@@ -114,6 +155,7 @@ export const makeSocketPolicyAuthRetry =
 
     return () => {
       cancel()
+      socket.auth.setStatus = setStatus
       socket.auth.off(AuthStateEvent.Status, onAuthChange)
       socket.off(SocketEvent.Status, onSocketStatus)
     }

@@ -40,6 +40,7 @@ export {
   closeSubscriptions,
   dropFromRelays,
   forgetRelay,
+  rewriteFromRelays,
   formatTranscript,
   getPublished,
   getPublishedEvents,

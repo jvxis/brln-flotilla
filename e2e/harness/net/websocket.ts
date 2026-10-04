@@ -38,6 +38,7 @@ type Traffic = {
   silenced: Set<string>
   subscriptions: Map<string, OpenSubscription>
   dropping: Array<(url: string, message: RelayMessage) => boolean>
+  rewriting: Array<(url: string, message: RelayMessage) => RelayMessage | undefined>
 }
 
 const trafficStore = makeContextStore<Traffic>("installWebSocketRoutes")
@@ -100,6 +101,10 @@ const serve = (traffic: Traffic, zooid: Zooid, route: WebSocketRoute) => {
   connection.onMessage(message => {
     if (traffic.dropping.some(drop => drop(url, message))) return
 
+    for (const rewrite of traffic.rewriting) {
+      message = rewrite(url, message) ?? message
+    }
+
     traffic.transcript.push({url, direction: "toClient", message})
     route.send(JSON.stringify(message))
   })
@@ -157,6 +162,7 @@ export const installWebSocketRoutes = (context: BrowserContext, zooid: Zooid) =>
     silenced: new Set(),
     subscriptions: new Map(),
     dropping: [],
+    rewriting: [],
   })
 
   return context.routeWebSocket(
@@ -249,5 +255,20 @@ export const dropFromRelays = (
 
   return () => {
     dropping.splice(dropping.indexOf(drop), 1)
+  }
+}
+
+// Messages from the relays that reach the client changed: the function returns the replacement, or
+// nothing to let the message through as it was. Returns the function that stops it.
+export const rewriteFromRelays = (
+  context: BrowserContext,
+  rewrite: (url: string, message: RelayMessage) => RelayMessage | undefined,
+) => {
+  const {rewriting} = trafficStore.get(context)
+
+  rewriting.push(rewrite)
+
+  return () => {
+    rewriting.splice(rewriting.indexOf(rewrite), 1)
   }
 }
