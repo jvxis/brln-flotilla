@@ -1,9 +1,10 @@
 import {derived, readable} from "svelte/store"
 import type {Unsubscriber} from "svelte/store"
-import {filter, first, on, spec} from "@welshman/lib"
+import {call, filter, first, on, spec} from "@welshman/lib"
 import type {Maybe} from "@welshman/lib"
-import {sortEventsDesc} from "@welshman/util"
+import {matchFilters, sortEventsDesc} from "@welshman/util"
 import type {Filter, TrustedEvent} from "@welshman/util"
+import type {Repository, RepositoryUpdate, Tracker} from "@welshman/net"
 import * as store from "@welshman/store"
 import {Network, Relays} from "@welshman/app"
 import {app, fromApp} from "@app/core"
@@ -31,25 +32,110 @@ export const deriveIsDeleted = (event: TrustedEvent) =>
 
 // Events on a relay
 
+type ForUrl = {
+  url: string
+  filters: Filter[]
+  tracker: Tracker
+  repository: Repository
+  includeDeleted?: boolean
+}
+
+// A filter the repository can answer from one of its small indexes: an author or a single-letter
+// tag, and no limit, which would have to be counted among this relay's events rather than all of them.
+const isNarrow = (filter: Filter) =>
+  !filter.limit &&
+  !filter.ids &&
+  (Boolean(filter.authors?.length) ||
+    Object.keys(filter).some(key => key.length === 2 && key.startsWith("#")))
+
+// The events on one relay that match the filters. Welshman asks the repository for "these filters,
+// among every id this relay ever sent", and the repository answers an `ids` filter first: it gathers
+// all of the relay's events, sorts them and checks each one for a deletion before it even looks at
+// the rest of the filter. Every message on screen asks this for its own threads (RoomItem), so a
+// room of a few hundred messages paid for the whole history the tab had loaded, again on every
+// room switch; switching rooms went from 0.2 s to 1.7 s after a few laps on the test VM (14/10/2026),
+// and only a reload brought it back. A narrow filter asks the repository through its own index and
+// keeps what came from this relay, which is the same answer; anything else goes the welshman way.
+const queryForUrl = ({url, filters, tracker, repository, includeDeleted}: ForUrl) => {
+  if (!filters.every(isNarrow)) {
+    return store.getEventsByIdForUrl({url, filters, tracker, repository, includeDeleted})
+  }
+
+  const eventsById = new Map<string, TrustedEvent>()
+
+  for (const event of repository.query(filters, {includeDeleted})) {
+    if (tracker.hasRelay(event.id, url)) {
+      eventsById.set(event.id, event)
+    }
+  }
+
+  return eventsById
+}
+
+// welshman's deriveEventsByIdForUrl, answering its first query and every reset with queryForUrl.
+const deriveForUrl = (options: ForUrl) => {
+  const {url, filters, tracker, repository, includeDeleted} = options
+  let eventsById = queryForUrl(options)
+
+  return readable(eventsById, set => {
+    const reset = () => {
+      eventsById = queryForUrl(options)
+      set(eventsById)
+    }
+
+    reset()
+
+    const unsubscribers = [
+      on(repository, "update", ({added, removed}: RepositoryUpdate) => {
+        let dirty = false
+
+        for (const event of added) {
+          if (tracker.hasRelay(event.id, url) && matchFilters(filters, event)) {
+            eventsById.set(event.id, event)
+            dirty = true
+          }
+        }
+
+        if (!includeDeleted) {
+          for (const id of removed) {
+            if (eventsById.delete(id)) {
+              dirty = true
+            }
+          }
+        }
+
+        if (dirty) {
+          set(eventsById)
+        }
+      }),
+      on(tracker, "add", (id: string, trackedUrl: string) => {
+        if (trackedUrl === url) {
+          const event = repository.getEvent(id)
+
+          if (event && tracker.hasRelay(id, trackedUrl) && matchFilters(filters, event)) {
+            eventsById.set(id, event)
+            set(eventsById)
+          }
+        }
+      }),
+      on(tracker, "remove", (id: string, trackedUrl: string) => {
+        if (trackedUrl === url && eventsById.delete(id)) {
+          set(eventsById)
+        }
+      }),
+      on(tracker, "load", reset),
+      on(tracker, "clear", reset),
+    ]
+
+    return () => unsubscribers.forEach(call)
+  })
+}
+
 export const getEventsForUrl = (url: string, filters: Filter[] = [{}]) =>
-  store
-    .getEventsByIdForUrl({
-      url,
-      filters,
-      tracker: app.get().tracker,
-      repository: app.get().repository,
-    })
-    .values()
+  queryForUrl({url, filters, tracker: app.get().tracker, repository: app.get().repository}).values()
 
 export const deriveEventsByIdForUrl = (url: string, filters: Filter[] = [{}]) =>
-  fromApp($app =>
-    store.deriveEventsByIdForUrl({
-      url,
-      filters,
-      tracker: $app.tracker,
-      repository: $app.repository,
-    }),
-  )
+  fromApp($app => deriveForUrl({url, filters, tracker: $app.tracker, repository: $app.repository}))
 
 export const deriveEventsForUrl = (url: string, filters: Filter[] = [{}]) =>
   store.deriveArray(deriveEventsByIdForUrl(url, filters))

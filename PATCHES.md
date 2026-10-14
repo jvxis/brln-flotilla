@@ -251,6 +251,16 @@ On 30/09/2026 Jaime found himself at `/spaces/relay3.br-ln.com/geral` without ha
 - **A guardian's address redirects** to the same page in the club's space before the page mounts, for links already saved or shared.
 - **Nothing changes during an outage**: the club's space already reads from all three relays (`relaysDoEspaco`) and counts what a guardian delivers as seen on the club (`ligaOsGuardioes`).
 
+### 22. A room switch no longer pays for the whole history the tab has loaded
+
+`queryForUrl` and `deriveForUrl` in `src/app/repository.ts` (behind `getEventsForUrl`, `deriveEventsByIdForUrl` and `deriveEventsForUrl`).
+
+On 14/10/2026 Jaime noticed that switching rooms got slower the longer the tab stayed open, and that a reload fixed it. Every message on screen derives its own threads (`RoomItem.svelte`: `{kinds: [THREAD], "#q": [event.id]}`) through welshman's `getEventsByIdForUrl`, which asks the repository for those filters plus `ids: <every id the relay ever sent>`. The repository answers an `ids` filter first, so each of the few hundred messages on screen gathered, sorted and checked for deletion every event the tab had loaded from the club. Reproduced on the test VM with three rooms of 4,000 messages and the history scrolled on each visit: the same switch went from 0.16 s to 1.3 s in ten laps, and a CPU profile put 40 of 77 seconds in those queries.
+
+- **A narrow filter goes through the repository's own index.** When every filter names an author or a single-letter tag and has no limit, the repository is asked for the filters alone and the result keeps what the tracker says came from this relay: the same answer, from a handful of events instead of the whole history.
+- **Anything else goes the welshman way**, unchanged: a filter with a limit has to be counted among this relay's events, and a filter with no tag or author gains nothing.
+- After the change the same run stayed between 0.2 s and 0.9 s, and the profile spent 5 of 61 seconds in queries.
+
 ## Updating from upstream
 
 ```sh
