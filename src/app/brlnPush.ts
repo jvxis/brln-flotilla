@@ -1,0 +1,118 @@
+import {makeHttpAuth, makeHttpAuthHeader} from "@welshman/util"
+import type {ISigner} from "@welshman/signer"
+import {BRLN_PUSH_URL, PLATFORM_URL} from "@app/env"
+
+// Notifications with the chat closed, through the club's own push service (brln-community
+// cmd/brln-push). Until 16/10/2026 the chat only notified while open, and on a phone that meant
+// nothing at all: the push servers upstream uses are a third party's and cannot read the club's
+// members-only relay. The browser subscribes with the service's VAPID key, and the subscription is
+// handed to the service in a request signed by the member's own key (NIP-98), so only members get
+// in and only for themselves. The service worker side is static/brln-push-sw.js.
+
+export type BrlnPushState = "unavailable" | "elsewhere" | "denied" | "off" | "on"
+
+const base64UrlToBytes = (value: string) => {
+  const padded = (value + "=".repeat((4 - (value.length % 4)) % 4))
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+  const raw = atob(padded)
+  return Uint8Array.from(raw, char => char.charCodeAt(0))
+}
+
+const sameKey = (a: ArrayBuffer | null | undefined, b: Uint8Array) => {
+  if (!a) return false
+  const bytes = new Uint8Array(a)
+  return bytes.length === b.length && bytes.every((byte, index) => byte === b[index])
+}
+
+const supported = () =>
+  Boolean(BRLN_PUSH_URL) &&
+  typeof window !== "undefined" &&
+  window.isSecureContext &&
+  "serviceWorker" in navigator &&
+  "PushManager" in window &&
+  "Notification" in window
+
+// The service lives next to chat.br-ln.com. The chat a node serves (LightningOS) runs on a
+// self-signed certificate, where the browser refuses a service worker, so it points there instead.
+const onPlatformOrigin = () => {
+  try {
+    return !PLATFORM_URL || new URL(PLATFORM_URL).origin === window.location.origin
+  } catch {
+    return true
+  }
+}
+
+const registration = async () => {
+  const ready = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), 5000)),
+  ])
+  if (!ready) throw new Error("This browser did not start the chat's background worker.")
+  return ready
+}
+
+export const brlnPushState = async (): Promise<BrlnPushState> => {
+  if (!BRLN_PUSH_URL) return "unavailable"
+  if (!onPlatformOrigin()) return "elsewhere"
+  if (!supported()) return "unavailable"
+  if (Notification.permission === "denied") return "denied"
+  try {
+    const subscription = await (await registration()).pushManager.getSubscription()
+    return subscription && Notification.permission === "granted" ? "on" : "off"
+  } catch {
+    return "off"
+  }
+}
+
+const signedPost = async (signer: ISigner, path: string, body: unknown) => {
+  const url = `${BRLN_PUSH_URL}${path}`
+  const json = JSON.stringify(body)
+  const auth = makeHttpAuthHeader(await signer.sign(await makeHttpAuth(url, "POST", json)))
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json", Authorization: auth},
+    body: json,
+  })
+  if (!response.ok) {
+    const reason = await response
+      .json()
+      .then(data => data?.error)
+      .catch(() => "")
+    throw new Error(reason || `The notification service answered ${response.status}.`)
+  }
+}
+
+export const enableBrlnPush = async (signer: ISigner, rooms: string[] = []) => {
+  if (!supported())
+    throw new Error("This browser cannot receive notifications with the chat closed.")
+  const permission = await Notification.requestPermission()
+  if (permission !== "granted") {
+    throw new Error(
+      permission === "denied"
+        ? "Notifications are blocked for this site. Allow them in the browser settings and try again."
+        : "The browser did not answer the request for notifications.",
+    )
+  }
+  const reg = await registration()
+  const {key} = await fetch(`${BRLN_PUSH_URL}/vapid`).then(response => response.json())
+  const applicationServerKey = base64UrlToBytes(key)
+  let subscription: PushSubscription | null | undefined = await reg.pushManager.getSubscription()
+  // A subscription made for another key (the service was reinstalled) cannot be used.
+  if (subscription && !sameKey(subscription.options.applicationServerKey, applicationServerKey)) {
+    await subscription.unsubscribe()
+    subscription = undefined
+  }
+  subscription ??= await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey})
+  await signedPost(signer, "/subscribe", {subscription: subscription.toJSON(), salas: rooms})
+}
+
+export const disableBrlnPush = async (signer: ISigner) => {
+  const subscription = await (await registration()).pushManager.getSubscription()
+  if (!subscription) return
+  try {
+    await signedPost(signer, "/unsubscribe", {endpoint: subscription.endpoint})
+  } finally {
+    await subscription.unsubscribe()
+  }
+}

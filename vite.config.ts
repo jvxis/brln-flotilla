@@ -67,6 +67,8 @@ export default defineConfig({
           // when modifyURLPrefix is unset, and an empty one is a no-op.
           modifyURLPrefix: {},
           globPatterns: ["client/**/*.{js,css,ico,png,svg,webp,webmanifest}"],
+          // The club's push handlers (static/brln-push-sw.js): notifications with the chat closed.
+          importScripts: ["brln-push-sw.js"],
         },
         manifest: {
           name: process.env.VITE_PLATFORM_NAME,

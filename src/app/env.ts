@@ -108,6 +108,10 @@ export const SIGNER_APP_LABEL = env("VITE_SIGNER_APP_LABEL") || "Browse Signer A
 // A deployment that ships its own signer recommends it instead of the directory.
 export const SIGNER_APP_CONFIGURED = Boolean(env("VITE_SIGNER_APP_URL"))
 
+// The club's own push service (brln-community cmd/brln-push). Empty keeps the chat as upstream:
+// notifications only while it is open.
+export const BRLN_PUSH_URL = (env("VITE_BRLN_PUSH_URL") || "").replace(/\/$/, "")
+
 // On the web, a key held by the app lives unencrypted in localStorage, so a deployment can require
 // an extension or remote signer instead. Native builds keep keys in secure storage.
 export const ALLOW_LOCAL_KEYS =

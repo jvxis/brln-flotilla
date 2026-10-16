@@ -271,6 +271,17 @@ On 15/10/2026 Redin added a link to the Library (kind 39067), shared it in the O
 - **A reply to a message is unchanged**: a room message can't be edited, and its id is what `RoomItem.svelte` looks threads up by.
 - A share made before this still points at the version it quoted; if that version was edited away, sharing the item again is the fix.
 
+### 24. Notifications with the chat closed, through the club's own push service
+
+`src/app/brlnPush.ts`, `src/app/components/BrlnPushSettings.svelte` (on the alerts settings page), `static/brln-push-sw.js` (loaded by workbox through `importScripts` in `vite.config.ts`) and `VITE_BRLN_PUSH_URL`.
+
+Until 16/10/2026 the chat only notified while it was open: `VITE_PUSH_SERVER` and `VITE_PUSH_BRIDGE` are a third party's services, and could not read the members-only relay anyway, so the club build had them empty. On a phone that meant no notification at all, and most members saw the Tor notice days late. The club now runs its own Web Push service (`brln-community/cmd/brln-push`), and this is its client.
+
+- **A switch that acts at once** ("Notify this device"): it asks the browser for permission, subscribes with the service's VAPID key and hands the subscription over in a request signed by the member's own key (NIP-98). Turning it off unsubscribes the browser and tells the service. A subscription made for another key is replaced.
+- **The service worker shows what the service sends** (title, the start of the text, a tag that collapses a busy room) and opens the room or the direct messages on tap.
+- **Only where it can work**: a browser without Push, or a chat served from a node (self-signed certificate: no service worker) gets no switch, or a pointer to chat.br-ln.com. On iPhone it needs the chat added to the home screen, which the card says.
+- Empty `VITE_BRLN_PUSH_URL` leaves everything as upstream.
+
 ## Updating from upstream
 
 ```sh

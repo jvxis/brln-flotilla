@@ -15,6 +15,7 @@
   import {clearBadges} from "@app/notifications"
   import {Push} from "@app/push"
   import {notificationSettings} from "@app/settings"
+  import BrlnPushSettings from "@app/components/BrlnPushSettings.svelte"
 
   const reset = () => {
     settings = {...notificationSettings.get()}
@@ -106,6 +107,7 @@
         {/snippet}
       </FieldInline>
     </div>
+    <BrlnPushSettings />
     <div
       class={cx("card bg-surface flex flex-col gap-4 shadow-md", {
         "pointer-events-none opacity-50": !settings.badge && !settings.sound && !settings.push,
