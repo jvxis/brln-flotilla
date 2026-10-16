@@ -107,6 +107,23 @@ export const enableBrlnPush = async (signer: ISigner, rooms: string[] = []) => {
   await signedPost(signer, "/subscribe", {subscription: subscription.toJSON(), salas: rooms})
 }
 
+// A direct message goes out as one gift wrap per recipient plus one back to the sender, and the
+// service cannot tell which wrap is the sender's own copy. So, on sending, the chat tells it "I just
+// sent one" and the service keeps that copy quiet for a few minutes. At most one signature every two
+// minutes, sent without waiting; the chat a node serves sends it too, since its member's phone may be
+// subscribed on chat.br-ln.com. A failure only means one extra notification.
+let lastSentSignal = 0
+
+export const noteBrlnDirectSent = (signer: ISigner | undefined) => {
+  if (!BRLN_PUSH_URL || !signer || typeof window === "undefined") return
+  const now = Date.now()
+  if (now - lastSentSignal < 120_000) return
+  lastSentSignal = now
+  signedPost(signer, "/sent", {}).catch(() => {
+    lastSentSignal = 0
+  })
+}
+
 export const disableBrlnPush = async (signer: ISigner) => {
   const subscription = await (await registration()).pushManager.getSubscription()
   if (!subscription) return

@@ -1,6 +1,7 @@
 import {removeUndefined} from "@welshman/lib"
 import type {EventContent, TrustedEvent} from "@welshman/util"
-import {deletes, reactions, relays, wraps} from "@app/core"
+import {app, deletes, reactions, relays, wraps} from "@app/core"
+import {noteBrlnDirectSent} from "@app/brlnPush"
 
 export type ReactionTarget = {
   url?: string
@@ -43,11 +44,15 @@ export const publishWrappedReaction = async (
 ) => {
   const command = await reactions.get().react(event, content, writer => writer.addTags(...tags))
 
+  noteBrlnDirectSent(app.get().user?.signer)
+
   return wraps.get().publish({event: command.event, recipients: pubkeys, pow: 16})
 }
 
 export const retractWrappedReaction = async (reaction: TrustedEvent, pubkeys: string[]) => {
   const command = await deletes.get().deleteEvent(reaction)
+
+  noteBrlnDirectSent(app.get().user?.signer)
 
   return wraps.get().publish({event: command.event, recipients: pubkeys, pow: 16})
 }

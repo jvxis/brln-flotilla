@@ -282,6 +282,7 @@ Until 16/10/2026 the chat only notified while it was open: `VITE_PUSH_SERVER` an
 - **Only where it can work**: a browser without Push, or a chat served from a node (self-signed certificate: no service worker) gets no switch, or a pointer to chat.br-ln.com. On iPhone it needs the chat added to the home screen, which the card says.
 - Empty `VITE_BRLN_PUSH_URL` leaves everything as upstream.
 - **Both service workers load the handlers.** The app registers `src/service-worker.js` itself (`src/routes/+layout.svelte`), and that one takes the "/" scope from the workbox `sw.js`. In 0.1.60 only `sw.js` had the handlers, so a push reached the browser and nothing showed. Since 0.1.61 `src/service-worker.js` also does `self.importScripts("/brln-push-sw.js")`; an existing subscription keeps working, since the scope is the same.
+- **Your own direct message does not ring your phone.** NIP-17 sends one gift wrap per recipient plus one back to the sender, and a wrap does not say who sent it, so sending André a message notified Jaime's own devices (16/10/2026). Since 0.1.62, sending a direct message or a reaction in one (`Chat.svelte`, `src/app/reactions.ts`) calls `noteBrlnDirectSent`, a signed `POST /sent` at most every two minutes, without waiting; the service keeps wraps addressed to that member quiet for three minutes. The chat a node serves sends it too (the service answers CORS for that endpoint). The trade-off: a reply that lands inside those three minutes does not notify either, while the member is visibly in the conversation.
 
 ## Updating from upstream
 

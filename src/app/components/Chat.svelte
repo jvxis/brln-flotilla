@@ -49,6 +49,7 @@
   import {prependParent} from "@app/rooms"
   import {pendingShare, type Share} from "@app/share"
   import {pushToast} from "@app/toast"
+  import {noteBrlnDirectSent} from "@app/brlnPush"
 
   type Props = {
     pubkeys: string[]
@@ -89,6 +90,8 @@
 
   const onSubmit = async (params: EventContent) => {
     const ptags = others.map(pk => ["p", pk])
+
+    noteBrlnDirectSent($app.user?.signer)
 
     // Remove p tags since they result in forking the conversation
     params.tags = params.tags.filter(nthNe(0, "p"))
