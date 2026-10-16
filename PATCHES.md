@@ -281,6 +281,7 @@ Until 16/10/2026 the chat only notified while it was open: `VITE_PUSH_SERVER` an
 - **The service worker shows what the service sends** (title, the start of the text, a tag that collapses a busy room) and opens the room or the direct messages on tap.
 - **Only where it can work**: a browser without Push, or a chat served from a node (self-signed certificate: no service worker) gets no switch, or a pointer to chat.br-ln.com. On iPhone it needs the chat added to the home screen, which the card says.
 - Empty `VITE_BRLN_PUSH_URL` leaves everything as upstream.
+- **Both service workers load the handlers.** The app registers `src/service-worker.js` itself (`src/routes/+layout.svelte`), and that one takes the "/" scope from the workbox `sw.js`. In 0.1.60 only `sw.js` had the handlers, so a push reached the browser and nothing showed. Since 0.1.61 `src/service-worker.js` also does `importScripts("/brln-push-sw.js")`; an existing subscription keeps working, since the scope is the same.
 
 ## Updating from upstream
 
