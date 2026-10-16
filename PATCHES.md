@@ -297,6 +297,8 @@ The live subscription of a room is asked again when the relay closes it or the s
 
 A phone suspends a home-screen app it is not showing and its sockets die. On return the relay asks for a new signature, which went to the remote signer over the dead path; the watch only rebuilt that path after two silent pings, forty to eighty seconds, and members closed and reopened the app instead. After more than fifteen seconds away the broker is now rebuilt at once on `visibilitychange` (iOS does not reliably fire `focus` there), and sockets still waiting on a signature from the old broker ask again immediately instead of after thirty-five seconds.
 
+The same window cost conversations: `Chat.svelte` looked the other person's inbox list up six times over thirty seconds and gave up, so a phone still re-authenticating showed "Direct messages are not enabled" for Cassiano while he was writing in it (his 10050 was on the club's relays since 29/09). The lookup now keeps going while the conversation is open, every five seconds and then every fifteen, and at once when the app comes back into view.
+
 ## Updating from upstream
 
 ```sh

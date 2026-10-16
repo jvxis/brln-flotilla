@@ -253,22 +253,46 @@
     // relay restarted, the lookup came back empty, and the conversation stayed locked on "Direct
     // messages are not enabled" until a hard reload -- his messaging relays were on the club's relay
     // all along. So whoever is still missing is asked again, a few times, before giving up.
+    //
+    // Six tries over thirty seconds were not enough either (16/10/2026): a phone coming back to the
+    // app spends about that long re-authenticating, the club's relay refuses a lookup made before
+    // that without saying so, and Jaime's iPhone showed Cassiano's conversation as not enabled while
+    // Cassiano was writing in it -- his inbox list had been on the club's relays since 29/09. So
+    // the lookup keeps going while the conversation is open: every five seconds at first, then
+    // every fifteen, and at once when the app comes back into view.
     let tries = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
 
-    const retry = setInterval(() => {
+    const lookUp = () => {
       const missing = others.filter(pk => !$messagingRelayLists.has(pk))
-
-      if (missing.length === 0 || ++tries > 6) {
-        clearInterval(retry)
-        return
-      }
 
       for (const pubkey of missing) {
         $app.use(MessagingRelayLists).forceLoad(pubkey)
       }
-    }, 5000)
 
-    return () => clearInterval(retry)
+      return missing.length
+    }
+
+    const schedule = () => {
+      timer = setTimeout(
+        () => {
+          if (lookUp() > 0) schedule()
+        },
+        ++tries > 6 ? 15_000 : 5000,
+      )
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") lookUp()
+    }
+
+    schedule()
+    document.addEventListener("visibilitychange", onVisible)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   })
 
   setTimeout(() => {
