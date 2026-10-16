@@ -261,6 +261,16 @@ On 14/10/2026 Jaime noticed that switching rooms got slower the longer the tab s
 - **Anything else goes the welshman way**, unchanged: a filter with a limit has to be counted among this relay's events, and a filter with no tag or author gains nothing.
 - After the change the same run stayed between 0.2 s and 0.9 s, and the profile spent 5 of 61 seconds in queries.
 
+### 23. A shared Library item keeps showing after it is edited
+
+`prependParent` in `src/app/rooms.ts`, which builds both a reply and a share to a room.
+
+On 15/10/2026 Redin added a link to the Library (kind 39067), shared it in the Open Bar a minute later, and edited it six minutes after that. The relay keeps only the newest version of an addressable event, so the version that was shared was replaced -- and the share, which quoted it by id (`nevent` and `["q", id]`), showed "Loading event..." from then on. Jaime remembered seeing it work, and it had: until the edit.
+
+- **An addressable or replaceable event is quoted by its address**: `nostr:naddr...` in the content and `["q", "<kind>:<pubkey>:<d>", <hint>]` in the tags, as NIP-18 allows. The address follows the item through its edits, and `ContentQuote.svelte` already loads either form.
+- **A reply to a message is unchanged**: a room message can't be edited, and its id is what `RoomItem.svelte` looks threads up by.
+- A share made before this still points at the version it quoted; if that version was edited away, sharing the item again is the fix.
+
 ## Updating from upstream
 
 ```sh
