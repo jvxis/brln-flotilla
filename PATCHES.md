@@ -299,6 +299,12 @@ A phone suspends a home-screen app it is not showing and its sockets die. On ret
 
 The same window cost conversations: `Chat.svelte` looked the other person's inbox list up six times over thirty seconds and gave up, so a phone still re-authenticating showed "Direct messages are not enabled" for Cassiano while he was writing in it (his 10050 was on the club's relays since 29/09). The lookup now keeps going while the conversation is open, every five seconds and then every fifteen, and at once when the app comes back into view.
 
+### 27. The club's relays never drop out of the router's choice
+
+`ligaNotaDoClube` in `src/app/publish.ts`.
+
+The router ranks relays by `RelayStats.getQuality`, which drops to zero after any error in the last minute, more than three in the last hour or more than ten in the day. An iPhone suspends a home-screen app constantly and every suspension kills its sockets, each counted as an error of the club's relay. On 16/10/2026 Jaime's iPhone had the club's relay at zero: the lookup of a person's inbox list (10050) went only to the outside relays of their old relay list, found nothing, and every direct conversation showed "Direct messages are not enabled", Cassiano's included while he wrote in it. The desktop, with no drops, was fine. The club's relays (and the guardians) now never score below 0.7: they hold every member's identity, and a try that fails costs only the try.
+
 ## Updating from upstream
 
 ```sh

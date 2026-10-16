@@ -10,8 +10,9 @@ import {
   RELAYS,
   ROOMS,
   SEARCH_RELAYS,
+  normalizeRelayUrl,
 } from "@welshman/util"
-import {Router} from "@welshman/app"
+import {RelayStats, Router} from "@welshman/app"
 import type {Command} from "@welshman/app"
 import {app} from "@app/core"
 import {PLATFORM_RELAYS} from "@app/env"
@@ -80,5 +81,37 @@ export const ligaLeituraDoClube = () => {
       pubkey ? uniq([...(await original(pubkey)), ...comOsGuardioes(PLATFORM_RELAYS)]) : []
   }
 
+  ligaNotaDoClube()
+
   return () => {}
+}
+
+// O Router escolhe relays pela nota de cada um (RelayStats.getQuality), e a nota vai a zero com
+// qualquer erro no último minuto, mais de três na última hora ou mais de dez no dia. Num iPhone o
+// app é suspenso a todo momento e cada suspensão derruba a conexão, que conta como erro do relay
+// do clube; em 16/10/2026 o celular do Jaime tinha o relay do clube com nota zero, a busca da
+// caixa de diretas (10050) ia só aos relays de fora da lista antiga de cada um, e toda conversa
+// direta mostrava "Direct messages are not enabled" -- inclusive a do Cassiano, que escrevia nela.
+// No desktop, sem quedas, funcionava. Os relays do clube não saem da escolha por isso: são os que
+// guardam a identidade de todo associado, e uma tentativa que falha custa só a tentativa.
+// A mais baixa das notas que o welshman dá a um relay em uso (0, 0.7, 0.8, 0.9 ou 1).
+const NOTA_MINIMA_DO_CLUBE = 0.7
+
+const comNota = new WeakSet<RelayStats>()
+
+const ligaNotaDoClube = () => {
+  const stats = app.get().use(RelayStats)
+
+  if (PLATFORM_RELAYS.length === 0 || comNota.has(stats)) return
+
+  comNota.add(stats)
+
+  const doClube = new Set(comOsGuardioes(PLATFORM_RELAYS).map(normalizeRelayUrl))
+  const original = stats.getQuality
+
+  stats.getQuality = (url: string) => {
+    const nota = original(url)
+
+    return nota === 0 && doClube.has(normalizeRelayUrl(url)) ? NOTA_MINIMA_DO_CLUBE : nota
+  }
 }
