@@ -463,6 +463,8 @@ const sincronizaUmRelayDoEspaco = (url: string, signal: AbortSignal) => {
     ],
   })
 
+  catchUpSpaceRelay(url, signal)
+
   // Which sections a space offers is a question about its whole history rather than about the
   // recent window above — a space whose newest poll is a year old still has polls. One event
   // per kind answers it. Like everything else here it waits for the socket to authenticate:
@@ -479,6 +481,68 @@ const sincronizaUmRelayDoEspaco = (url: string, signal: AbortSignal) => {
       filters: CONTENT_KINDS.map(kind => ({kinds: [kind], limit: 1})),
     })
   })()
+}
+
+// The rooms' safety net, the same one the direct messages have (syncDMRelay). The live
+// subscription is asked again when the relay closes it or the socket drops, but a connection that
+// goes deaf without closing says nothing: on 16/10/2026 a desktop left open since 19:18 never got a
+// 19:44 message in Suporte, which the phone showed at once, and only a reload brought it. So each
+// space relay is asked again for what is recent every SPACE_CATCHUP_INTERVAL, and at once when the
+// tab comes back into view or the network comes back. The overlap covers a catch-up that ran just
+// as something was published; what arrives twice merges by id.
+const SPACE_CATCHUP_INTERVAL = 60_000
+const SPACE_CATCHUP_OVERLAP = 5 * 60
+
+const catchUpSpaceRelay = (url: string, signal: AbortSignal) => {
+  let last = now()
+  let running = false
+
+  const catchUp = async () => {
+    if (signal.aborted || running) return
+
+    running = true
+
+    try {
+      const since = last - SPACE_CATCHUP_OVERLAP
+
+      await waitUntilListenable(url, signal)
+
+      if (signal.aborted) return
+
+      last = now()
+
+      await app
+        .get()
+        .use(Sync)
+        .pull({
+          relays: [url],
+          filters: [
+            {kinds: [...CONTENT_KINDS, MESSAGE, PIN, ROOM_JOIN, ROOM_LEAVE], since},
+            {kinds: [...REACTION_KINDS, POLL_RESPONSE], since},
+            makeCommentFilter(CONTENT_KINDS, {since}),
+          ],
+        })
+    } catch {
+      // The next round asks again.
+    } finally {
+      running = false
+    }
+  }
+
+  const onVisible = () => {
+    if (document.visibilityState === "visible") catchUp()
+  }
+
+  const interval = setInterval(catchUp, SPACE_CATCHUP_INTERVAL)
+
+  document.addEventListener("visibilitychange", onVisible)
+  window.addEventListener("online", catchUp)
+
+  signal.addEventListener("abort", () => {
+    clearInterval(interval)
+    document.removeEventListener("visibilitychange", onVisible)
+    window.removeEventListener("online", catchUp)
+  })
 }
 
 const syncSpaces = () => {

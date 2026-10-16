@@ -211,14 +211,54 @@ const watchSigner = (
 
   const interval = setInterval(check, PING_INTERVAL)
 
+  // Coming back from the background. A phone suspends a web app it is not showing and drops its
+  // sockets, and the relay asks for a new signature as soon as the app is back. Waiting for two
+  // silent pings to rebuild took forty to eighty seconds, and members closed and reopened the app
+  // instead (Jaime, iPhone, 16/10/2026). After a real absence the broker is rebuilt at once, which
+  // is what that reopening did, and the relays still waiting on the old one are told to ask again.
+  // `focus` alone was not enough: a home-screen app on iOS does not reliably fire it on return, while
+  // `visibilitychange` it does.
+  let hiddenSince = 0
+
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden") {
+      hiddenSince = Date.now()
+      return
+    }
+
+    const away = hiddenSince ? Date.now() - hiddenSince : 0
+
+    hiddenSince = 0
+
+    if (away >= AWAY_BEFORE_REBUILD) {
+      console.info(`Back after ${Math.round(away / 1000)}s away: rebuilding the remote signer.`)
+      rebuild()
+      silent = 0
+      window.dispatchEvent(new CustomEvent(SIGNER_REBUILT))
+    } else {
+      check()
+    }
+  }
+
   if (typeof window !== "undefined") {
     // Waking up is when this matters most: a phone or a laptop that slept has lost its
     // sockets, and the first thing the person does is expect the chat to work.
     window.addEventListener("online", check)
     window.addEventListener("focus", check)
+    document.addEventListener("visibilitychange", onVisibility)
+    window.addEventListener("pageshow", event => {
+      if (event.persisted) onVisibility()
+    })
     window.addEventListener("beforeunload", () => clearInterval(interval))
   }
 }
+
+// How long away counts as an absence worth a fresh broker. Switching apps for a moment does not.
+const AWAY_BEFORE_REBUILD = 15_000
+
+// Fired after the broker is rebuilt on return, so authentications left waiting on the old one are
+// asked again now (authRetry.ts) instead of after their own timeout.
+export const SIGNER_REBUILT = "brln:signer-rebuilt"
 
 // Addresses that only exist inside someone's own network.
 const isPrivateHost = (host: string) => {

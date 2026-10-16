@@ -1,5 +1,6 @@
 import {AuthStateEvent, AuthStatus, SocketEvent, SocketStatus} from "@welshman/net"
 import type {Socket} from "@welshman/net"
+import {SIGNER_REBUILT} from "@app/remoteSigner"
 
 // A relay asks for authentication (NIP-42) once per connection, and welshman signs it once. If that
 // signature fails, the socket is meant to go to `DeniedSignature`. It never gets there, and that is
@@ -150,13 +151,24 @@ export const makeSocketPolicyAuthRetry =
       }
     }
 
+    // The remote signer was rebuilt on coming back to the app (remoteSigner.ts): a signature asked
+    // of the old broker will never come, so ask again now rather than in thirty-five seconds.
+    const onSignerRebuilt = () => {
+      if (socket.auth.status === AuthStatus.PendingSignature && shouldRetry(socket)) {
+        cancel()
+        askAgainIf(AuthStatus.PendingSignature)()
+      }
+    }
+
     socket.auth.on(AuthStateEvent.Status, onAuthChange)
     socket.on(SocketEvent.Status, onSocketStatus)
+    if (typeof window !== "undefined") window.addEventListener(SIGNER_REBUILT, onSignerRebuilt)
 
     return () => {
       cancel()
       socket.auth.setStatus = setStatus
       socket.auth.off(AuthStateEvent.Status, onAuthChange)
       socket.off(SocketEvent.Status, onSocketStatus)
+      if (typeof window !== "undefined") window.removeEventListener(SIGNER_REBUILT, onSignerRebuilt)
     }
   }

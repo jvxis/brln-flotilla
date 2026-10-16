@@ -4,7 +4,7 @@
 // src/app/brlnPush.ts for the subscription side.
 
 self.addEventListener("push", event => {
-  let data = {}
+  let data
   try {
     data = event.data ? event.data.json() : {}
   } catch {
@@ -13,21 +13,43 @@ self.addEventListener("push", event => {
   const title = data.title || "BR⚡LN Community"
   const tag = data.tag || undefined
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "",
-      tag,
-      // A new message in a room replaces the previous one quietly; a mention or reply rings.
-      renotify: Boolean(tag && !tag.startsWith("sala-")),
-      icon: "/pwa-192x192.png",
-      badge: "/pwa-64x64.png",
-      data: {url: data.url || "/"},
-    }),
+    self.registration
+      .showNotification(title, {
+        body: data.body || "",
+        tag,
+        // A new message in a room replaces the previous one quietly; a mention or reply rings.
+        renotify: Boolean(tag && !tag.startsWith("sala-")),
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-64x64.png",
+        data: {url: data.url || "/"},
+      })
+      .then(updateAppBadge),
   )
+})
+
+// The number on the app's icon (home screen on iPhone and Android, the dock or taskbar on a
+// computer): how many of the club's notifications are waiting. Notifications that share a tag
+// collapse into one, so a busy room counts once. The chat clears it when it is opened
+// (src/app/brlnPush.ts, watchBrlnBadge).
+const updateAppBadge = () =>
+  self.registration
+    .getNotifications()
+    .then(open => {
+      if (!self.navigator.setAppBadge) return
+      return open.length > 0
+        ? self.navigator.setAppBadge(open.length)
+        : self.navigator.clearAppBadge()
+    })
+    .catch(() => {})
+
+self.addEventListener("notificationclose", event => {
+  event.waitUntil(updateAppBadge())
 })
 
 self.addEventListener("notificationclick", event => {
   event.notification.close()
   const url = (event.notification.data && event.notification.data.url) || "/"
+  event.waitUntil(updateAppBadge())
   event.waitUntil(
     self.clients.matchAll({type: "window", includeUncontrolled: true}).then(windows => {
       for (const client of windows) {

@@ -107,6 +107,31 @@ export const enableBrlnPush = async (signer: ISigner, rooms: string[] = []) => {
   await signedPost(signer, "/subscribe", {subscription: subscription.toJSON(), salas: rooms})
 }
 
+// Opening the chat clears what the notifications said was waiting: the club's notifications still
+// in the tray and the number on the app's icon (static/brln-push-sw.js sets it). The way a
+// messaging app clears its own once it is opened.
+export const watchBrlnBadge = () => {
+  if (!BRLN_PUSH_URL || !onPlatformOrigin() || !supported()) return () => {}
+
+  const clear = async () => {
+    if (document.visibilityState !== "visible") return
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      for (const notification of (await reg?.getNotifications()) ?? []) {
+        notification.close()
+      }
+      await navigator.clearAppBadge?.()
+    } catch {
+      // Nothing to clear, or a browser without badges: either way nothing is lost.
+    }
+  }
+
+  clear()
+  document.addEventListener("visibilitychange", clear)
+
+  return () => document.removeEventListener("visibilitychange", clear)
+}
+
 // A direct message goes out as one gift wrap per recipient plus one back to the sender, and the
 // service cannot tell which wrap is the sender's own copy. So, on sending, the chat tells it "I just
 // sent one" and the service keeps that copy quiet for a few minutes. At most one signature every two

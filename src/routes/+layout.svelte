@@ -45,6 +45,7 @@
   import {onPushNotificationAction, pushState} from "@app/push/adapters/common"
   import {syncKeyboard} from "@app/keyboard"
   import {getPageTitle} from "@app/title"
+  import {watchBrlnBadge} from "@app/brlnPush"
   import NewNotificationSound from "@src/app/components/NewNotificationSound.svelte"
 
   const {children} = $props()
@@ -154,6 +155,9 @@
     const unsubscribers: Unsubscriber[] = []
 
     registerServiceWorker()
+
+    // Opening the chat clears the club's notifications and the number on its icon
+    unsubscribers.push(watchBrlnBadge())
 
     // Attach the user before anything reads or decrypts on their behalf
     unsubscribers.push(await restoreSession())
