@@ -2,7 +2,7 @@ import * as nip19 from "nostr-tools/nip19"
 import {derived, get, writable} from "svelte/store"
 import {formatTimestampAsDate, int, sortBy, uniq, MINUTE} from "@welshman/lib"
 import type {Maybe} from "@welshman/lib"
-import {outbox, relay, seen, toNostrURI} from "@welshman/util"
+import {Address, getAddress, isReplaceable, outbox, relay, seen, toNostrURI} from "@welshman/util"
 import type {EventContent, TrustedEvent} from "@welshman/util"
 import {Message} from "@welshman/domain"
 import {MembershipStatus, RoomLists, makeRoomKey, createSearch} from "@welshman/app"
@@ -86,10 +86,22 @@ export const prependParent = async (
     const resolver = router.get().resolver
     const relays = url ? [url] : await resolver.relays([seen(parent)])
     const hint = url ?? (await resolver.relay([outbox(parent.pubkey)])) ?? ""
-    const nevent = nip19.neventEncode({id: parent.id, author: parent.pubkey, relays})
+    // A Library item, an article or a listing is edited by publishing a new version, and the
+    // relay keeps only the newest. A quote by id points at the version that was shared and turns
+    // into "Loading event..." at the first edit -- Redin shared a Library link in the Open Bar
+    // and edited it six minutes later (15/10/2026). The address follows the item through its
+    // edits, so that is what a share of one of these quotes (NIP-18: the q tag takes either).
+    if (isReplaceable(parent)) {
+      const address = getAddress(parent)
 
-    content = toNostrURI(nevent) + "\n\n" + content
-    tags = [...tags, ["q", parent.id, hint, parent.pubkey], ["p", parent.pubkey, hint]]
+      content = toNostrURI(Address.from(address, relays).toNaddr()) + "\n\n" + content
+      tags = [...tags, ["q", address, hint], ["p", parent.pubkey, hint]]
+    } else {
+      const nevent = nip19.neventEncode({id: parent.id, author: parent.pubkey, relays})
+
+      content = toNostrURI(nevent) + "\n\n" + content
+      tags = [...tags, ["q", parent.id, hint, parent.pubkey], ["p", parent.pubkey, hint]]
+    }
   }
 
   return {content, tags}
