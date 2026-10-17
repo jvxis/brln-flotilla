@@ -1,0 +1,118 @@
+/* telegram.css -- Telegram-like: its blue, its green and blue bubbles, the green-grey wallpaper behind the
+   messages in light mode, system fonts and soft corners.
+   Added 17/10/2026 at Jaime's request, beside the BR⚡LN default (brln.css). The three app-like
+   themes share the same token layout so they stay consistent with each other. */
+[data-fl-theme="telegram"] {
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-fancy:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  &[data-theme="light"] {
+    --primary: #3390ec;
+    --primary-soft: #5ea8f2;
+    --primary-bold: #2481cc;
+    --primary-content: #ffffff;
+
+    --secondary: #4fae4e;
+    --secondary-soft: #6cc36b;
+    --secondary-bold: #3b8f3a;
+    --secondary-content: #ffffff;
+
+    --success: oklch(62% 0.15 154.45);
+    --success-content: oklch(98% 0.02 154.45);
+    --warning: oklch(80% 0.142 78);
+    --warning-content: oklch(17% 0.03 78);
+    --error: oklch(58% 0.208 25);
+    --error-content: oklch(98% 0.012 25);
+
+    --backdrop: #e4e8ec;
+    --surface: #ffffff;
+    --surface-more: #f1f3f5;
+    --surface-less: #ffffff;
+
+    --content: #0f1419;
+    --content-muted: color-mix(in oklab, var(--content) 66%, var(--surface));
+    --content-subtle: color-mix(in oklab, var(--content) 42%, var(--surface));
+
+    --line: rgba(0, 0, 0, 0.08);
+    --line-more: rgba(0, 0, 0, 0.16);
+    --line-less: rgba(0, 0, 0, 0.05);
+
+    --shadow-color: 8, 17, 31;
+    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
+    --shadow: 0 4px 12px rgba(var(--shadow-color), 0.1);
+    --shadow-lg: 0 10px 30px rgba(var(--shadow-color), 0.12);
+    --shadow-inset: inset 0 -4px 0 rgba(0, 0, 0, 0.05);
+    --shadow-inset-strong: inset 0 -3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  &[data-theme="dark"] {
+    --primary: #5288c1;
+    --primary-soft: #6ea0d6;
+    --primary-bold: #3d73ad;
+    --primary-content: #ffffff;
+
+    --secondary: #64b5ef;
+    --secondary-soft: #82c4f3;
+    --secondary-bold: #4a9fdc;
+    --secondary-content: #0e1621;
+
+    --success: oklch(80% 0.14 158);
+    --success-content: oklch(16% 0.03 158);
+    --warning: oklch(83% 0.142 80);
+    --warning-content: oklch(17% 0.03 80);
+    --error: oklch(70% 0.17 25);
+    --error-content: oklch(16% 0.03 25);
+
+    --backdrop: #0e1621;
+    --surface: #17212b;
+    --surface-more: #0e1621;
+    --surface-less: #182533;
+
+    --content: #f5f5f5;
+    --content-muted: color-mix(in oklab, var(--content) 66%, var(--surface));
+    --content-subtle: color-mix(in oklab, var(--content) 42%, var(--surface));
+
+    --line: rgba(255, 255, 255, 0.07);
+    --line-more: rgba(255, 255, 255, 0.14);
+    --line-less: rgba(255, 255, 255, 0.04);
+
+    --shadow-color: 0, 0, 0;
+    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.35);
+    --shadow: 0 4px 12px rgba(var(--shadow-color), 0.4);
+    --shadow-lg: 0 10px 30px rgba(var(--shadow-color), 0.5);
+    --shadow-inset: inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+    --shadow-inset-strong: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* The wallpaper behind the messages (light): rooms (.room__content) and direct messages (the page
+   content of .room), not the rest of the app. */
+[data-fl-theme="telegram"][data-theme="light"] .room__content,
+[data-fl-theme="telegram"][data-theme="light"] .room > [data-component="PageContent"] {
+  background-color: #c8d9b8;
+}
+
+[data-fl-theme="telegram"][data-theme="light"] .chat-bubble--user {
+  background-color: #eeffde;
+  color: #0f1419;
+}
+
+/* The wallpaper behind the messages (dark): rooms (.room__content) and direct messages (the page
+   content of .room), not the rest of the app. */
+[data-fl-theme="telegram"][data-theme="dark"] .room__content,
+[data-fl-theme="telegram"][data-theme="dark"] .room > [data-component="PageContent"] {
+  background-color: #0e1621;
+}
+
+[data-fl-theme="telegram"][data-theme="dark"] .chat-bubble--user {
+  background-color: #2b5278;
+  color: #ffffff;
+}

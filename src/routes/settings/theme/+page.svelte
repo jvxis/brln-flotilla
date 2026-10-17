@@ -12,9 +12,13 @@
   import FieldInline from "@lib/components/FieldInline.svelte"
   import PageContent from "@lib/components/PageContent.svelte"
   import {publishSettings, userSettingsValues} from "@app/settings"
-  import {flTheme, flThemes, theme} from "@app/theme"
+  import {flTheme, flThemeLabels, flThemes, theme} from "@app/theme"
 
   const saveFontSize = () => publishSettings({font_size: fontSize})
+
+  // A theme no longer offered (navy, since 17/10/2026) stays listed while it is the one in use, so
+  // the picker shows what the member has instead of a blank.
+  const themeOptions = $derived(flThemes.includes($flTheme) ? flThemes : [...flThemes, $flTheme])
 
   let fontSize = $state($userSettingsValues.font_size)
 </script>
@@ -55,9 +59,9 @@
         <p>App theme</p>
       {/snippet}
       {#snippet input()}
-        <select class="select input capitalize" bind:value={$flTheme} aria-label="Style">
-          {#each flThemes as option (option)}
-            <option value={option}>{option}</option>
+        <select class="select input" bind:value={$flTheme} aria-label="Style">
+          {#each themeOptions as option (option)}
+            <option value={option}>{flThemeLabels[option] ?? option}</option>
           {/each}
         </select>
       {/snippet}

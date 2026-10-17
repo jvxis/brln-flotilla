@@ -1,0 +1,118 @@
+/* whatsapp.css -- WhatsApp-like: its teal-green, the light-green and dark-green bubbles, the beige wallpaper
+   behind the messages in light mode, system fonts and small corners.
+   Added 17/10/2026 at Jaime's request, beside the BR⚡LN default (brln.css). The three app-like
+   themes share the same token layout so they stay consistent with each other. */
+[data-fl-theme="whatsapp"] {
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.625rem;
+  --radius-3xl: 1rem;
+
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-fancy:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  &[data-theme="light"] {
+    --primary: #008069;
+    --primary-soft: #00a884;
+    --primary-bold: #005c4b;
+    --primary-content: #ffffff;
+
+    --secondary: #25d366;
+    --secondary-soft: #4ade80;
+    --secondary-bold: #1da851;
+    --secondary-content: #0b141a;
+
+    --success: oklch(62% 0.15 154.45);
+    --success-content: oklch(98% 0.02 154.45);
+    --warning: oklch(80% 0.142 78);
+    --warning-content: oklch(17% 0.03 78);
+    --error: oklch(58% 0.208 25);
+    --error-content: oklch(98% 0.012 25);
+
+    --backdrop: #f0f2f5;
+    --surface: #ffffff;
+    --surface-more: #f0f2f5;
+    --surface-less: #ffffff;
+
+    --content: #111b21;
+    --content-muted: color-mix(in oklab, var(--content) 66%, var(--surface));
+    --content-subtle: color-mix(in oklab, var(--content) 42%, var(--surface));
+
+    --line: rgba(0, 0, 0, 0.08);
+    --line-more: rgba(0, 0, 0, 0.16);
+    --line-less: rgba(0, 0, 0, 0.05);
+
+    --shadow-color: 8, 17, 31;
+    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
+    --shadow: 0 4px 12px rgba(var(--shadow-color), 0.1);
+    --shadow-lg: 0 10px 30px rgba(var(--shadow-color), 0.12);
+    --shadow-inset: inset 0 -4px 0 rgba(0, 0, 0, 0.05);
+    --shadow-inset-strong: inset 0 -3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  &[data-theme="dark"] {
+    --primary: #00a884;
+    --primary-soft: #06cf9c;
+    --primary-bold: #008069;
+    --primary-content: #111b21;
+
+    --secondary: #25d366;
+    --secondary-soft: #4ade80;
+    --secondary-bold: #1da851;
+    --secondary-content: #0b141a;
+
+    --success: oklch(80% 0.14 158);
+    --success-content: oklch(16% 0.03 158);
+    --warning: oklch(83% 0.142 80);
+    --warning-content: oklch(17% 0.03 80);
+    --error: oklch(70% 0.17 25);
+    --error-content: oklch(16% 0.03 25);
+
+    --backdrop: #0b141a;
+    --surface: #111b21;
+    --surface-more: #0b141a;
+    --surface-less: #202c33;
+
+    --content: #e9edef;
+    --content-muted: color-mix(in oklab, var(--content) 66%, var(--surface));
+    --content-subtle: color-mix(in oklab, var(--content) 42%, var(--surface));
+
+    --line: rgba(134, 150, 160, 0.15);
+    --line-more: rgba(134, 150, 160, 0.28);
+    --line-less: rgba(134, 150, 160, 0.08);
+
+    --shadow-color: 0, 0, 0;
+    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.35);
+    --shadow: 0 4px 12px rgba(var(--shadow-color), 0.4);
+    --shadow-lg: 0 10px 30px rgba(var(--shadow-color), 0.5);
+    --shadow-inset: inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+    --shadow-inset-strong: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* The wallpaper behind the messages (light): rooms (.room__content) and direct messages (the page
+   content of .room), not the rest of the app. */
+[data-fl-theme="whatsapp"][data-theme="light"] .room__content,
+[data-fl-theme="whatsapp"][data-theme="light"] .room > [data-component="PageContent"] {
+  background-color: #efeae2;
+}
+
+[data-fl-theme="whatsapp"][data-theme="light"] .chat-bubble--user {
+  background-color: #d9fdd3;
+  color: #111b21;
+}
+
+/* The wallpaper behind the messages (dark): rooms (.room__content) and direct messages (the page
+   content of .room), not the rest of the app. */
+[data-fl-theme="whatsapp"][data-theme="dark"] .room__content,
+[data-fl-theme="whatsapp"][data-theme="dark"] .room > [data-component="PageContent"] {
+  background-color: #0b141a;
+}
+
+[data-fl-theme="whatsapp"][data-theme="dark"] .chat-bubble--user {
+  background-color: #005c4b;
+  color: #e9edef;
+}

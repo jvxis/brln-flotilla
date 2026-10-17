@@ -313,6 +313,14 @@ Until 17/10/2026 every icon was the bare orange bolt: it said Lightning, not BR�
 
 The generator's minimal preset padded the iPhone and maskable icons with 30% of white around an image that already has its own background, so home screens showed a navy square in a white frame. The preset is now spelled out: the iPhone icon full-bleed, the maskable one padded in the logo's navy (the wordmark stays inside Android's circular crop), and no generated favicon; `build-web.sh` copies `static/brln-favicon.ico` (16, 32 and 48 px) over it.
 
+### 29. Themes: BR⚡LN revised to the site, and Telegram, WhatsApp and Discord look-alikes
+
+`src/lib/components/brln.css`, `telegram.css`, `whatsapp.css`, `discord.css`, `fonts-brln.css` (and `static/fonts/IBMPlexSans-*`, `SpaceGrotesk-*`), the fonts moved out of `@theme inline` in `base.css`, `flThemes` and `flThemeLabels` in `src/app/theme.ts`, the picker in `src/routes/settings/theme/+page.svelte`.
+
+Asked by Jaime on 17/10/2026, with the new icon. The picker showed the raw ids ("Brln"); it now shows names, "BR⚡LN" first. The BR⚡LN theme (still the default) takes the site's typefaces -- IBM Plex Sans and Space Grotesk, self-hosted, variable, latin and latin-ext -- and its rounder corners; its light variant drops a dark goldenrod the site never uses for navy actions with the yellow on them and a dark teal for accents on white, the member's own bubble navy with light text. Three themes look like the chat apps members know: Telegram (blue, green-and-blue bubbles, the green-grey wallpaper behind messages in light), WhatsApp (teal-green, its bubbles, the beige wallpaper) and Discord (graphite and blurple, messages without bubbles). Clay and flat stay; navy is no longer offered, since the revised BR⚡LN dark is the same navy, but its tokens stay so whoever picked it keeps it and still sees it in the picker.
+
+For a theme to set its own fonts, `--font-body`/`--font-heading`/`--font-fancy` left the `@theme inline` block: inlined, `font-body` compiled to the literal "Lato" and no theme could change it. Bubble colours and the message wallpaper are unlayered rules in each theme file, so they win over the component layer without `!important`.
+
 ## Updating from upstream
 
 ```sh

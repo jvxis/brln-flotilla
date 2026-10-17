@@ -1,0 +1,101 @@
+/* discord.css -- Discord-like: graphite greys, its blurple for actions, messages laid out flat with no bubble,
+   system fonts and small corners.
+   Added 17/10/2026 at Jaime's request, beside the BR⚡LN default (brln.css). The three app-like
+   themes share the same token layout so they stay consistent with each other. */
+[data-fl-theme="discord"] {
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.75rem;
+
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-fancy:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  &[data-theme="light"] {
+    --primary: #5865f2;
+    --primary-soft: #7983f5;
+    --primary-bold: #4752c4;
+    --primary-content: #ffffff;
+
+    --secondary: #23a559;
+    --secondary-soft: #3ba55c;
+    --secondary-bold: #1a8a49;
+    --secondary-content: #ffffff;
+
+    --success: oklch(62% 0.15 154.45);
+    --success-content: oklch(98% 0.02 154.45);
+    --warning: oklch(80% 0.142 78);
+    --warning-content: oklch(17% 0.03 78);
+    --error: oklch(58% 0.208 25);
+    --error-content: oklch(98% 0.012 25);
+
+    --backdrop: #e3e5e8;
+    --surface: #ffffff;
+    --surface-more: #f2f3f5;
+    --surface-less: #ebedef;
+
+    --content: #313338;
+    --content-muted: color-mix(in oklab, var(--content) 66%, var(--surface));
+    --content-subtle: color-mix(in oklab, var(--content) 42%, var(--surface));
+
+    --line: rgba(0, 0, 0, 0.08);
+    --line-more: rgba(0, 0, 0, 0.16);
+    --line-less: rgba(0, 0, 0, 0.05);
+
+    --shadow-color: 8, 17, 31;
+    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
+    --shadow: 0 4px 12px rgba(var(--shadow-color), 0.1);
+    --shadow-lg: 0 10px 30px rgba(var(--shadow-color), 0.12);
+    --shadow-inset: inset 0 -4px 0 rgba(0, 0, 0, 0.05);
+    --shadow-inset-strong: inset 0 -3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  &[data-theme="dark"] {
+    --primary: #5865f2;
+    --primary-soft: #7983f5;
+    --primary-bold: #4752c4;
+    --primary-content: #ffffff;
+
+    --secondary: #23a559;
+    --secondary-soft: #3ba55c;
+    --secondary-bold: #1a8a49;
+    --secondary-content: #ffffff;
+
+    --success: oklch(80% 0.14 158);
+    --success-content: oklch(16% 0.03 158);
+    --warning: oklch(83% 0.142 80);
+    --warning-content: oklch(17% 0.03 80);
+    --error: oklch(70% 0.17 25);
+    --error-content: oklch(16% 0.03 25);
+
+    --backdrop: #1e1f22;
+    --surface: #313338;
+    --surface-more: #2b2d31;
+    --surface-less: #383a40;
+
+    --content: #dbdee1;
+    --content-muted: color-mix(in oklab, var(--content) 66%, var(--surface));
+    --content-subtle: color-mix(in oklab, var(--content) 42%, var(--surface));
+
+    --line: rgba(255, 255, 255, 0.06);
+    --line-more: rgba(255, 255, 255, 0.12);
+    --line-less: rgba(255, 255, 255, 0.03);
+
+    --shadow-color: 0, 0, 0;
+    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.35);
+    --shadow: 0 4px 12px rgba(var(--shadow-color), 0.4);
+    --shadow-lg: 0 10px 30px rgba(var(--shadow-color), 0.5);
+    --shadow-inset: inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+    --shadow-inset-strong: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Discord lays messages out flat: no bubble, own or not; the text sits on the page. */
+[data-fl-theme="discord"] .chat-bubble,
+[data-fl-theme="discord"] .chat-bubble--user {
+  background-color: transparent;
+  color: var(--content);
+}

@@ -29,8 +29,22 @@ const colors = [
 
 export const colorFor = (value: string) => colors[hash(value) % colors.length]
 
-// Every theme with token values in lib/components/theme.css
-export const flThemes = ["clay", "flat", "navy", "brln"]
+// The themes offered in settings, in that order, with token values in lib/components/theme.css.
+// BR⚡LN (17/10/2026): the club's own first, then three that look like the chat apps members know,
+// then upstream's clay and flat. Navy is no longer offered -- the revised BR⚡LN dark is the same
+// navy -- but its tokens stay, so whoever picked it keeps it until they choose another.
+export const flThemes = ["brln", "telegram", "whatsapp", "discord", "clay", "flat"]
+
+// How each theme is named in the picker; the ids are lowercase on purpose (they are attribute values).
+export const flThemeLabels: Record<string, string> = {
+  brln: "BR⚡LN",
+  telegram: "Telegram",
+  whatsapp: "WhatsApp",
+  discord: "Discord",
+  clay: "Clay",
+  flat: "Flat",
+  navy: "Navy",
+}
 
 export const flTheme = synced({
   key: "flTheme",

@@ -45,7 +45,12 @@
 
   --border-thin: 1px;
   --border-thick: 1px;
+}
 
+/* BR⚡LN (17/10/2026): the fonts sit outside `inline` so font-body and font-heading read the
+   variable, and a theme can set its own (brln.css uses the site's IBM Plex Sans and Space Grotesk).
+   Inlined, every theme was stuck with Lato. */
+@theme {
   --font-body: "Lato", sans-serif;
   --font-heading: "Lato", sans-serif;
   --font-fancy: "Lato", sans-serif;

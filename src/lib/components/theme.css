@@ -7,6 +7,8 @@
      flat.css     — flat theme token values ([data-fl-theme="flat"] + dark)
      navy.css     — navy theme token values ([data-fl-theme="navy"] + dark)
      brln.css     — BR⚡LN Club theme token values ([data-fl-theme="brln"] + dark)
+     fonts-brln.css — the site's typefaces, self-hosted, used by brln.css
+     telegram.css, whatsapp.css, discord.css — app-like themes (17/10/2026)
 
    Every theme is selected the same way, by its own data-fl-theme value — there
    is no default, so VITE_THEME (→ FL_THEME, stamped on <body> + the app root)
@@ -19,6 +21,10 @@
 @import "./flat.css";
 @import "./navy.css";
 @import "./brln.css";
+@import "./fonts-brln.css";
+@import "./telegram.css";
+@import "./whatsapp.css";
+@import "./discord.css";
 
 /* per-component styles (one file per component class family) */
 @import "./badge.css";
