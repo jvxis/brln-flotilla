@@ -26,6 +26,12 @@ fi
 
 # Ensure generator uses local path (dotenv may have loaded URL from .env)
 VITE_PLATFORM_LOGO="${VITE_PLATFORM_LOGO}" npx pwa-assets-generator
+
+# BR⚡LN: the favicon is the simple mark (the balloon with the bolt), drawn for 16-48 px; the app icon
+# carries the BR⚡LN wordmark, which a browser tab cannot show (pwa-assets.config.js).
+if [ -f static/brln-favicon.ico ]; then
+  cp static/brln-favicon.ico static/favicon.ico
+fi
 npx vite build
 
 # Replace index.html variables with stuff from our env

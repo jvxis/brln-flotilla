@@ -20,7 +20,8 @@ self.addEventListener("push", event => {
         // A new message in a room replaces the previous one quietly; a mention or reply rings.
         renotify: Boolean(tag && !tag.startsWith("sala-")),
         icon: "/pwa-192x192.png",
-        badge: "/pwa-64x64.png",
+        // Android draws only the alpha of the status-bar icon: a silhouette, not the colour icon.
+        badge: "/brln-badge-96.png",
         data: {url: data.url || "/"},
       })
       .then(updateAppBadge),

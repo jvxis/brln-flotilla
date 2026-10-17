@@ -305,6 +305,14 @@ The same window cost conversations: `Chat.svelte` looked the other person's inbo
 
 The router ranks relays by `RelayStats.getQuality`, which drops to zero after any error in the last minute, more than three in the last hour or more than ten in the day. An iPhone suspends a home-screen app constantly and every suspension kills its sockets, each counted as an error of the club's relay. On 16/10/2026 Jaime's iPhone had the club's relay at zero: the lookup of a person's inbox list (10050) went only to the outside relays of their old relay list, found nothing, and every direct conversation showed "Direct messages are not enabled", Cassiano's included while he wrote in it. The desktop, with no drops, was fine. The club's relays (and the guardians) now never score below 0.7: they hold every member's identity, and a try that fails costs only the try.
 
+### 28. The club's own app icon, favicon and status-bar icon
+
+`static/brln-app-icon.png` (`VITE_PLATFORM_APP_ICON` in `deploy/brln.env`), `static/brln-logo.png`, `static/brln-favicon*.{ico,png}`, `static/brln-badge-96.png`, `pwa-assets.config.js`, `scripts/build-web.sh`, `src/app.html`, `static/brln-push-sw.js`.
+
+Until 17/10/2026 every icon was the bare orange bolt: it said Lightning, not BR⚡LN, and not chat. Chosen by Jaime among six drafts: the installed app (manifest icons, iPhone home screen, Android maskable, notification image) shows an orange chat balloon with a navy bolt and the BR⚡LN wordmark under it; the browser tab, the favicon and the mark inside the app (`VITE_PLATFORM_LOGO`, drawn in a small circle) show only the balloon with the bolt, since a wordmark is noise at 16-48 px. Android's status bar draws only an icon's alpha, so notifications carry a white silhouette of the balloon as their badge.
+
+The generator's minimal preset padded the iPhone and maskable icons with 30% of white around an image that already has its own background, so home screens showed a navy square in a white frame. The preset is now spelled out: the iPhone icon full-bleed, the maskable one padded in the logo's navy (the wordmark stays inside Android's circular crop), and no generated favicon; `build-web.sh` copies `static/brln-favicon.ico` (16, 32 and 48 px) over it.
+
 ## Updating from upstream
 
 ```sh
