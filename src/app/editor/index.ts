@@ -36,6 +36,24 @@ import {userSpaceUrls} from "@app/rooms"
 import {PLATFORM_RELAYS} from "@app/env"
 import {pushToast} from "@app/toast"
 
+// BR⚡LN: the clipboard on Windows ends lines in "\r\n", and nostr-editor's paste splits on "\n"
+// alone, so every pasted line kept a "\r" that the message then showed as one more line break.
+// The paste handler only reads the files and the plain text, so it gets the text with plain "\n".
+const pasteWithUnixNewlines: typeof editorProps.handlePaste = (view, event) => {
+  const data = event.clipboardData
+  const text = data?.getData("text/plain") ?? ""
+
+  if (!data || !text.includes("\r")) return editorProps.handlePaste(view, event)
+
+  const clipboardData = {
+    files: data.files,
+    getData: (type: string) =>
+      type === "text/plain" ? text.replace(/\r\n?/g, "\n") : data.getData(type),
+  }
+
+  return editorProps.handlePaste(view, {clipboardData} as unknown as ClipboardEvent)
+}
+
 const isEmpty = (editor: Editor) => editor.getText({blockSeparator: "\n"}).trim() === ""
 
 export const makeEditor = async ({
@@ -183,7 +201,7 @@ export const makeEditor = async ({
 
   const ed = new Editor({
     content: typeof content === "string" ? undefined : content,
-    editorProps,
+    editorProps: {...editorProps, handlePaste: pasteWithUnixNewlines},
     element: document.createElement("div"),
     extensions: [
       RoomReferenceExtension,

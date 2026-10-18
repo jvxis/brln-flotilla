@@ -333,6 +333,17 @@ On 17/10/2026 Jaime's iPhone showed each notification twice, then four times: th
 
 Upstream keeps the wallet only on the device it was connected on: on 17/10/2026 Jaime had his wallet on the desktop and, on the phone, only the lightning address, which is in the profile. A Nostr Wallet Connect wallet is only its connection details, and they now travel in the settings event, encrypted to the member's own key, where upstream already keeps the OpenRouter key. Connecting one shares it, disconnecting one disconnects it everywhere (the confirmation says so), and a wallet connected before this is shared once from the device that has it, only after the settings event really loaded, since a publish from the defaults would wipe the member's settings. Each device keeps the time of the last wallet it took or gave, per member, so an older value never replaces a newer one. A browser extension wallet (WebLN) belongs to that browser: it is neither shared nor replaced.
 
+### 32. Text pasted on Windows keeps single line breaks
+
+`pasteWithUnixNewlines` in `src/app/editor/index.ts`, `parseEvent` in `src/app/render.ts` (used by `Content.svelte`, `ContentMinimal.svelte` and the summaries).
+
+On 18/10/2026 Jaime noticed that every long text he pasted on the desktop posted with double spacing, and editing it and sending again fixed it. The Windows clipboard ends lines in "
+"; nostr-editor's paste splits on "
+" alone, so each pasted line kept a "", and `renderAsHtml` draws a "" as a `<br>` of its own: every line break showed twice. Editing reloads the text through `innerText`, which drops the "", hence the fix by editing. The paste handler now gets the text with plain "
+", and display turns "
+" into "
+" first, for messages already stored and for other clients.
+
 ## Updating from upstream
 
 ```sh

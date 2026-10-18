@@ -1,7 +1,6 @@
 <script lang="ts">
   import {tagSpec, tagValue} from "@welshman/util"
   import {
-    parse,
     truncate,
     renderAsHtml,
     isText,
@@ -27,6 +26,7 @@
   import Icon from "@lib/components/Icon.svelte"
   import Button from "@lib/components/Button.svelte"
   import Card from "@lib/components/Card.svelte"
+  import {parseEvent} from "@app/render"
   import ContentToken from "@app/components/ContentToken.svelte"
   import ContentEmoji from "@app/components/ContentEmoji.svelte"
   import ContentEmail from "@app/components/ContentEmail.svelte"
@@ -73,7 +73,7 @@
     tags: event.tags,
   })
 
-  const fullContent = $derived(parse(event))
+  const fullContent = $derived(parseEvent(event))
 
   const expand = () => {
     showEntire = true

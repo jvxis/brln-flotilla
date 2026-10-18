@@ -2,7 +2,6 @@
   import cx from "classnames"
   import {fromNostrURI, tagValue, tagSpec} from "@welshman/util"
   import {
-    parse,
     truncate,
     renderAsHtml,
     isText,
@@ -23,6 +22,7 @@
   import Danger from "@assets/icons/danger-triangle.svg?dataurl"
   import Icon from "@lib/components/Icon.svelte"
   import Button from "@lib/components/Button.svelte"
+  import {parseEvent} from "@app/render"
   import ContentToken from "@app/components/ContentToken.svelte"
   import ContentEmoji from "@app/components/ContentEmoji.svelte"
   import ContentEmail from "@app/components/ContentEmail.svelte"
@@ -43,7 +43,7 @@
 
   const {event, trimParent = false, singleLine = false, url}: Props = $props()
 
-  const fullContent = $derived(parse(event))
+  const fullContent = $derived(parseEvent(event))
 
   const isBoundary = (i: number) => {
     const parsed = fullContent[i]
