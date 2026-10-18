@@ -337,12 +337,7 @@ Upstream keeps the wallet only on the device it was connected on: on 17/10/2026 
 
 `pasteWithUnixNewlines` in `src/app/editor/index.ts`, `parseEvent` in `src/app/render.ts` (used by `Content.svelte`, `ContentMinimal.svelte` and the summaries).
 
-On 18/10/2026 Jaime noticed that every long text he pasted on the desktop posted with double spacing, and editing it and sending again fixed it. The Windows clipboard ends lines in "
-"; nostr-editor's paste splits on "
-" alone, so each pasted line kept a "", and `renderAsHtml` draws a "" as a `<br>` of its own: every line break showed twice. Editing reloads the text through `innerText`, which drops the "", hence the fix by editing. The paste handler now gets the text with plain "
-", and display turns "
-" into "
-" first, for messages already stored and for other clients.
+On 18/10/2026 Jaime noticed that every long text he pasted on the desktop posted with double spacing, and editing it and sending again fixed it. The Windows clipboard ends lines in `\r\n`; nostr-editor's paste splits on `\n` alone, so each pasted line kept a `\r`, and `renderAsHtml` draws a `\r` as a `<br>` of its own: every line break showed twice. Editing reloads the text through `innerText`, which drops the `\r`, hence the fix by editing. The paste handler now gets the text with plain `\n`, and display turns `\r\n` into `\n` first, for messages already stored and for other clients.
 
 ## Updating from upstream
 
