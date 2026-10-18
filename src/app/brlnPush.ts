@@ -81,6 +81,7 @@ const signedPost = async (signer: ISigner, path: string, body: unknown) => {
       .catch(() => "")
     throw new Error(reason || `The notification service answered ${response.status}.`)
   }
+  return response.json().catch(() => ({}))
 }
 
 export const enableBrlnPush = async (signer: ISigner, rooms: string[] = []) => {
@@ -147,6 +148,35 @@ export const noteBrlnDirectSent = (signer: ISigner | undefined) => {
   signedPost(signer, "/sent", {}).catch(() => {
     lastSentSignal = 0
   })
+}
+
+// The member's devices with notifications on, as the service sees them (it is the only one that
+// sees all of them). Asked on 17/10/2026: Jaime's iPhone had kept the subscription of an earlier
+// install of the chat next to the current one, and showed every notification twice.
+export type BrlnPushDevice = {
+  servico: "apple" | "google" | "mozilla" | "windows" | "outro"
+  desde: number
+  atualizado: number
+  este: boolean
+}
+
+const currentEndpoint = async () => {
+  try {
+    return (await (await registration()).pushManager.getSubscription())?.endpoint ?? ""
+  } catch {
+    return ""
+  }
+}
+
+export const listBrlnPushDevices = async (signer: ISigner): Promise<BrlnPushDevice[]> => {
+  const data = await signedPost(signer, "/devices", {endpoint: await currentEndpoint()})
+  return Array.isArray(data?.devices) ? data.devices : []
+}
+
+// Turns notifications off on every device but this one (on all of them, if this one is off).
+export const turnOffOtherBrlnPushDevices = async (signer: ISigner): Promise<number> => {
+  const data = await signedPost(signer, "/devices/others", {endpoint: await currentEndpoint()})
+  return Number(data?.removed) || 0
 }
 
 export const disableBrlnPush = async (signer: ISigner) => {

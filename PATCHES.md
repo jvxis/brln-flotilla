@@ -321,6 +321,18 @@ Asked by Jaime on 17/10/2026, with the new icon. The picker showed the raw ids (
 
 For a theme to set its own fonts, `--font-body`/`--font-heading`/`--font-fancy` left the `@theme inline` block: inlined, `font-body` compiled to the literal "Lato" and no theme could change it. Bubble colours and the message wallpaper are unlayered rules in each theme file, so they win over the component layer without `!important`.
 
+### 30. The member's devices with notifications on, and turning the others off
+
+`listBrlnPushDevices` and `turnOffOtherBrlnPushDevices` in `src/app/brlnPush.ts`, the list in `src/app/components/BrlnPushSettings.svelte` (and `POST /push/devices`, `POST /push/devices/others` in brln-community `cmd/brln-push`).
+
+On 17/10/2026 Jaime's iPhone showed each notification twice, then four times: the subscription of an earlier install of the chat was still there next to the current one, and a browser only knows its own. The card now lists, on request, every device of the member the service notifies (who delivers its pushes, since when, which one is this) and turns notifications off on all the others in one tap. The list needs a signature, so it loads only when asked: opening settings never sends a remote signer a request nobody made.
+
+### 31. The NWC wallet follows the member across devices
+
+`src/app/walletSync.ts`, `wallet_nwc` in `SettingsValues` (`src/app/settings.ts`), `src/app/components/WalletConnect.svelte`, `WalletDisconnect.svelte`, `watchWalletSync` in `src/routes/+layout.svelte`.
+
+Upstream keeps the wallet only on the device it was connected on: on 17/10/2026 Jaime had his wallet on the desktop and, on the phone, only the lightning address, which is in the profile. A Nostr Wallet Connect wallet is only its connection details, and they now travel in the settings event, encrypted to the member's own key, where upstream already keeps the OpenRouter key. Connecting one shares it, disconnecting one disconnects it everywhere (the confirmation says so), and a wallet connected before this is shared once from the device that has it, only after the settings event really loaded, since a publish from the defaults would wipe the member's settings. Each device keeps the time of the last wallet it took or gave, per member, so an older value never replaces a newer one. A browser extension wallet (WebLN) belongs to that browser: it is neither shared nor replaced.
+
 ## Updating from upstream
 
 ```sh

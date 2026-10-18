@@ -26,6 +26,7 @@
   import WalletAsReceivingAddress from "@app/components/WalletAsReceivingAddress.svelte"
   import {deriveUserItem} from "@app/core"
   import {getWebLn, wallet} from "@app/lightning"
+  import {shareWallet} from "@app/walletSync"
   import {pushToast} from "@app/toast"
   import {pushModal} from "@app/modal"
 
@@ -77,7 +78,10 @@
           message: "Wallet failed to connect",
         })
       } else {
-        wallet.set({type: WalletType.NWC, info: client.options as unknown as NWCInfo})
+        const nwcInfo = client.options as unknown as NWCInfo
+
+        wallet.set({type: WalletType.NWC, info: nwcInfo})
+        shareWallet(nwcInfo)
         pushToast({message: "Wallet successfully connected!"})
 
         await sleep(400)

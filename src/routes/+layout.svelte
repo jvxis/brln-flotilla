@@ -46,6 +46,7 @@
   import {syncKeyboard} from "@app/keyboard"
   import {getPageTitle} from "@app/title"
   import {watchBrlnBadge} from "@app/brlnPush"
+  import {watchWalletSync} from "@app/walletSync"
   import NewNotificationSound from "@src/app/components/NewNotificationSound.svelte"
 
   const {children} = $props()
@@ -196,6 +197,9 @@
 
     // Wait for critical storage data only
     await storage.get()?.ready
+
+    // BR⚡LN: after the local wallet is restored, take the one shared by the member's other devices
+    unsubscribers.push(watchWalletSync())
 
     // Handle cold-start deep links. When a link launches the app from a killed
     // state the intent arrives via onCreate, so Capacitor never emits

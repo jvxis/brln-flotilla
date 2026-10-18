@@ -2,6 +2,7 @@ import type {Writable} from "svelte/store"
 import {derived, writable} from "svelte/store"
 import {append, equals, remove, spec} from "@welshman/lib"
 import {APP_DATA} from "@welshman/util"
+import type {NWCInfo} from "@welshman/util"
 import {withGetter} from "@welshman/store"
 import {AppData} from "@welshman/domain"
 import type {AppDataReader} from "@welshman/domain"
@@ -25,6 +26,13 @@ export type SpaceNotificationSettings = {
   muted?: string[]
 }
 
+// BR⚡LN: the NWC wallet shared across the member's devices (src/app/walletSync.ts); info is absent
+// once it was disconnected. Absent until a device first shares one, and never in the defaults.
+export type SyncedWallet = {
+  info?: NWCInfo
+  at: number
+}
+
 export type SettingsValues = {
   show_media: boolean
   hide_sensitive: boolean
@@ -36,6 +44,7 @@ export type SettingsValues = {
   alerts: SpaceNotificationSettings[]
   zap_amounts: number[]
   openrouter_key: string
+  wallet_nwc?: SyncedWallet
 }
 
 export const defaultSettings: SettingsValues = {
