@@ -339,6 +339,12 @@ Upstream keeps the wallet only on the device it was connected on: on 17/10/2026 
 
 On 18/10/2026 Jaime noticed that every long text he pasted on the desktop posted with double spacing, and editing it and sending again fixed it. The Windows clipboard ends lines in `\r\n`; nostr-editor's paste splits on `\n` alone, so each pasted line kept a `\r`, and `renderAsHtml` draws a `\r` as a `<br>` of its own: every line break showed twice. Editing reloads the text through `innerText`, which drops the `\r`, hence the fix by editing. The paste handler now gets the text with plain `\n`, and display turns `\r\n` into `\n` first, for messages already stored and for other clients.
 
+### 33. A room's unread dot lights for messages that come in through a guardian
+
+`deriveEventsByIdByUrl` in `src/app/repository.ts` (read by `latestActivityByPath` in `src/app/notifications.ts`).
+
+On 31/10/2026 Jaime said that with the chat left open on the desktop, Node Check always got its dot and the other rooms (Open Bar, Suporte, Operação de Nodes) often did not: he only saw a new message when he walked into the room. On the phone, which reopens the app, the dots were right. The dot comes from the club relay's events in welshman's `deriveEventsByIdByUrl`, and that store does `dirty = dirty || addEvent(url, event)` over every relay an event was seen on: once one url is added, the next ones are skipped. Members write to the club and to both guardians, and the chat reads the three, so a message often arrives first through a guardian. `ingestPolicy` tracks it there, `ligaOsGuardioes` (mirrors.ts) tracks it on the club too while the repository does not hold it yet, then the repository publishes it and the store adds the guardian and skips the club. When the club delivers the same message, the tracker already has that url and says nothing, so the gap stays until a reload. The room itself showed the message, because its own feed (`deriveForUrl`) has no such shortcut. Node Check is written by the HUB to the club alone, so the club always came first. Reproduced with welshman's own `Tracker`, `Repository` and `deriveEventsByIdByUrl` (guardian: yes, club: no). The store is now ours, the same as welshman's with every url added. The shortcut is still there in welshman 0.12.3.
+
 ## Updating from upstream
 
 ```sh
