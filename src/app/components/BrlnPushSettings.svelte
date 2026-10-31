@@ -132,9 +132,9 @@
         {/snippet}
       </FieldInline>
       <p class="text-sm opacity-75">
-        Mentions, replies to you, direct messages (Node Check alerts arrive there) and Comunicados.
-        A room message shows who wrote and how it starts; a direct message only says it arrived, as
-        it is end-to-end encrypted.
+        Mentions, replies to you, direct messages (Node Check alerts arrive there), Comunicados and
+        Alertas de Segurança. A room message shows who wrote and how it starts; a direct message
+        only says it arrived, as it is end-to-end encrypted.
       </p>
       {#if status === "denied"}
         <p class="text-sm text-error">

@@ -140,10 +140,95 @@ export const deriveEventsByIdForUrl = (url: string, filters: Filter[] = [{}]) =>
 export const deriveEventsForUrl = (url: string, filters: Filter[] = [{}]) =>
   store.deriveArray(deriveEventsByIdForUrl(url, filters))
 
-export const deriveEventsByIdByUrl = (filters: Filter[] = [{}]) =>
-  fromApp($app =>
-    store.deriveEventsByIdByUrl({filters, tracker: $app.tracker, repository: $app.repository}),
-  )
+// Events by the relay they were seen on. This is what lights a room's unread dot (notifications.ts
+// reads the club's url in it), and it is welshman's deriveEventsByIdByUrl except for one line.
+// Welshman does `dirty = dirty || addEvent(url, event)`: once one url was added, the rest are never
+// called. An event that comes in through a guardian is tracked there, and ligaOsGuardioes
+// (mirrors.ts) tracks it on the club too before the repository holds it, so when it lands the
+// guardian came first and the club was skipped. The same message coming in from the club later
+// adds nothing to the tracker, so nothing else ever filled the gap: the room showed the message
+// and the menu never lit (31/10/2026, the desktop left open; members write to the three relays
+// and the nearest guardian usually answers first). Node Check, written to the club alone, always lit.
+export const deriveEventsByIdByUrl = (filters: Filter[] = [{}], includeDeleted = false) =>
+  fromApp($app => {
+    const {tracker, repository} = $app
+
+    return readable(new Map<string, Map<string, TrustedEvent>>(), set => {
+      let eventsByIdByUrl = store.getEventsByIdByUrl({filters, tracker, repository, includeDeleted})
+
+      const addEvent = (url: string, event: TrustedEvent) => {
+        if (!matchFilters(filters, event)) return false
+
+        const eventsById = eventsByIdByUrl.get(url)
+
+        if (eventsById?.has(event.id)) return false
+
+        // A new map, so a consumer can tell which url changed
+        eventsByIdByUrl.set(url, new Map(eventsById).set(event.id, event))
+
+        return true
+      }
+
+      const removeEvent = (url: string, id: string) => {
+        const eventsById = eventsByIdByUrl.get(url)
+
+        if (!eventsById?.has(id)) return false
+
+        const rest = new Map(eventsById)
+
+        rest.delete(id)
+
+        if (rest.size === 0) {
+          eventsByIdByUrl.delete(url)
+        } else {
+          eventsByIdByUrl.set(url, rest)
+        }
+
+        return true
+      }
+
+      const reset = () => {
+        eventsByIdByUrl = store.getEventsByIdByUrl({filters, tracker, repository, includeDeleted})
+        set(eventsByIdByUrl)
+      }
+
+      set(eventsByIdByUrl)
+
+      const unsubscribers = [
+        on(repository, "update", ({added, removed}: RepositoryUpdate) => {
+          let dirty = false
+
+          for (const event of added) {
+            for (const url of tracker.getRelays(event.id)) {
+              if (addEvent(url, event)) dirty = true
+            }
+          }
+
+          if (!includeDeleted) {
+            for (const id of removed) {
+              for (const url of tracker.getRelays(id)) {
+                if (removeEvent(url, id)) dirty = true
+              }
+            }
+          }
+
+          if (dirty) set(eventsByIdByUrl)
+        }),
+        on(tracker, "add", (id: string, url: string) => {
+          const event = repository.getEvent(id)
+
+          if (event && addEvent(url, event)) set(eventsByIdByUrl)
+        }),
+        on(tracker, "remove", (id: string, url: string) => {
+          if (removeEvent(url, id)) set(eventsByIdByUrl)
+        }),
+        on(tracker, "load", reset),
+        on(tracker, "clear", reset),
+      ]
+
+      return () => unsubscribers.forEach(call)
+    })
+  })
 
 export const deriveRelaySignedEvents = (url: string, filters: Filter[] = [{}]) =>
   derived(
