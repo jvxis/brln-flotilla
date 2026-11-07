@@ -182,7 +182,7 @@
   </div>
   {#if !isMobile}
     <div
-      class="room__item-actions join absolute right-2 top-0.5 opacity-0 transition-all focus-within:opacity-100 group-hover:opacity-100">
+      class="room__item-actions join absolute right-2 top-0.5 opacity-0 transition-all focus-within:opacity-100 [.group:hover_&]:opacity-100">
       {#if ENABLE_ZAPS}
         <RoomItemZapButton {url} {event} />
       {/if}

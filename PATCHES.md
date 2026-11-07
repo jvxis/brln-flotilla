@@ -345,6 +345,10 @@ On 18/10/2026 Jaime noticed that every long text he pasted on the desktop posted
 
 On 31/10/2026 Jaime said that with the chat left open on the desktop, Node Check always got its dot and the other rooms (Open Bar, Suporte, Operação de Nodes) often did not: he only saw a new message when he walked into the room. On the phone, which reopens the app, the dots were right. The dot comes from the club relay's events in welshman's `deriveEventsByIdByUrl`, and that store does `dirty = dirty || addEvent(url, event)` over every relay an event was seen on: once one url is added, the next ones are skipped. Members write to the club and to both guardians, and the chat reads the three, so a message often arrives first through a guardian. `ingestPolicy` tracks it there, `ligaOsGuardioes` (mirrors.ts) tracks it on the club too while the repository does not hold it yet, then the repository publishes it and the store adds the guardian and skips the club. When the club delivers the same message, the tracker already has that url and says nothing, so the gap stays until a reload. The room itself showed the message, because its own feed (`deriveForUrl`) has no such shortcut. Node Check is written by the HUB to the club alone, so the club always came first. Reproduced with welshman's own `Tracker`, `Repository` and `deriveEventsByIdByUrl` (guardian: yes, club: no). The store is now ours, the same as welshman's with every url added. The shortcut is still there in welshman 0.12.3.
 
+### 34. Message actions show on hover even when the browser reports no mouse
+
+On 07/11/2026 Jaime noticed that hovering a message no longer showed the emoji, reply and actions buttons, though clicking their place worked. Tailwind 4 wraps `group-hover:` in `@media (hover: hover)`, and that browser answers `false` to `(hover: hover)`, so the buttons stayed at `opacity-0` while still taking clicks. `RoomItem.svelte` and `ChatMessage.svelte` now use `[.group:hover_&]:opacity-100`, which has no media condition. Touch screens are unaffected: both blocks only render when `isMobile` is false.
+
 ## Updating from upstream
 
 ```sh

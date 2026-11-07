@@ -71,8 +71,7 @@
       <button
         type="button"
         aria-label="Message actions"
-        class="opacity-0 transition-all focus:opacity-100"
-        class:group-hover:opacity-100={!isMobile}
+        class="opacity-0 transition-all focus:opacity-100 [.group:hover_&]:opacity-100"
         onclick={togglePopover}>
         <Icon icon={MenuDots} size={4} />
       </button>
