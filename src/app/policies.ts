@@ -28,6 +28,7 @@ import type {AppPolicy, IApp} from "@welshman/app"
 import {app, logger, appPolicies, session} from "@app/core"
 import {makeSocketPolicyAuthRetry} from "@app/authRetry"
 import {socketPolicyMessageLimit} from "@app/messageLimit"
+import {socketPolicyWrapDrift} from "@app/wrapDrift"
 import {BLOCKED_RELAYS, PLATFORM_RELAYS} from "@app/env"
 import {userSettingsValues, getSetting, RelayAuthMode} from "@app/settings"
 
@@ -252,6 +253,8 @@ export const socketPolicy: AppPolicy = $app => {
     makeSocketPolicyAuthRetry(() => session.get()?.method === "nip46"),
     // A message a relay won't read drops the connection on every reconnect; see messageLimit.ts
     socketPolicyMessageLimit,
+    // A reopened socket asks for direct messages from a few minutes ago; see wrapDrift.ts
+    socketPolicyWrapDrift,
   ]
 
   $app.pool.socketPolicies.push(...policies)

@@ -67,6 +67,7 @@ import {decodeRelay} from "@app/relays"
 import {Settings} from "@app/settings"
 import {kv} from "@app/storage"
 import {hasBlossomSupport} from "@app/uploads"
+import {WRAP_DRIFT} from "@app/wrapDrift"
 
 // Whether to sync gift wraps. Unwrapping itself is unconditional, so this is the only
 // thing keeping a signer from being asked to decrypt the user's entire DM history.
@@ -96,13 +97,10 @@ const listenRetryDelay = (failures: number) =>
 // that nothing published around that moment goes missing.
 const LISTEN_OVERLAP = 60
 
-// A gift wrap's timestamp is deliberately wrong. NIP-59 backdates it by a random amount of up
-// to 100,000 seconds -- about 28 hours -- so a relay can't tell when a conversation happened.
-// A live subscription that reaches back one minute therefore never matches a wrap that was
-// just published: the relay compares the filter against that false date and withholds the
-// event. The message only appeared on the next page load, when the pull runs with no lower
-// bound. So a filter that asks for wraps reaches back past the whole drift.
-const WRAP_DRIFT = 100_000
+// A gift wrap's timestamp is deliberately wrong (see wrapDrift.ts). A live subscription that
+// reaches back one minute therefore never matches a wrap that was just published: the relay
+// compares the filter against that false date and withholds the event. So a filter that asks for
+// wraps reaches back past the whole drift.
 
 const listenSince = (filter: Filter, since: number) =>
   Math.max(filter.since || 0, filter.kinds?.includes(WRAP) ? since - WRAP_DRIFT : since)
