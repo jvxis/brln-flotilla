@@ -1090,3 +1090,47 @@ test("BR⚡LN direct messages keep opening after the signer loses a decryption",
 
   await expect(bubble(alice, "this one is lost")).toBeVisible({timeout: 20_000})
 })
+
+// A device opening its whole history -- a new device, or a member who moved to another signer --
+// used to open a direct message that came in meanwhile only after every older one: on 08/11/2026
+// that was about twenty minutes per device for Jaime's 1,140 wraps over a remote signer. The newest
+// wraps go first now. The history here is dated ten to forty days back, as a real one is, and every
+// decryption takes as long as a remote signer's round trip.
+test("BR⚡LN a direct message that arrives live opens ahead of a history still being opened", async ({
+  seed,
+  as,
+  zooid,
+}) => {
+  test.setTimeout(180_000)
+
+  const scenario = await seed(({relay, user}) => {
+    const space = relay("space")
+
+    seedPerson(space, user.alice, "Alice Anchor")
+    seedPerson(space, user.bob, "Bob Barnacle")
+    seedPerson(space, user.carol, "Carol Cutter")
+    space.messagingRelayList(user.alice)
+    space.messagingRelayList(user.bob)
+  })
+
+  for (let day = 10; day < 40; day++) {
+    await zooid.publish(
+      scenario.space("space").url,
+      backdatedWrap(users.carol, users.alice, `an old message from day ${day}`, day * 24),
+      {as: users.carol},
+    )
+  }
+
+  const bob = await as(users.bob, chatPath(users.alice.pubkey))
+  const alice = await as(users.alice, "/chat", {env: {VITE_TEST_DECRYPT_DELAY: "400"}})
+
+  // The history has started to open, and most of it is still waiting: thirty wraps at two slow
+  // decryptions each is about twenty-five seconds.
+  await expect(chatItems(alice).filter({hasText: "Carol Cutter"})).toBeVisible({timeout: 30_000})
+
+  await sendDm(bob, "this one just arrived")
+
+  await expect(chatItems(alice).filter({hasText: "this one just arrived"})).toBeVisible({
+    timeout: 10_000,
+  })
+})

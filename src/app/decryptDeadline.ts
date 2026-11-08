@@ -1,6 +1,6 @@
-import {noop} from "@welshman/lib"
+import {noop, sleep} from "@welshman/lib"
 import type {AppPolicy} from "@welshman/app"
-import {takeTestDecryptStall} from "@lib/test/session"
+import {getTestDecryptDelay, takeTestDecryptStall} from "@lib/test/session"
 
 // Direct messages are opened one at a time. Welshman's Wraps queue awaits each unwrap before the
 // next, and a remote signer's decryption has no deadline: Nip46Sender publishes the request without
@@ -47,9 +47,15 @@ export const decryptDeadlinePolicy: AppPolicy = $app => {
   return $app.user.wrapSigner((method, thunk) => {
     if (!DECRYPTIONS.has(method)) return thunk()
 
-    // Test-only: a decryption that is never answered, inside the deadline like a real lost one.
+    // Test-only: a decryption that is never answered, inside the deadline like a real lost one, or
+    // one that takes as long as a round trip to a remote signer does.
+    const delay = import.meta.env.DEV ? getTestDecryptDelay() : 0
     const answer =
-      import.meta.env.DEV && takeTestDecryptStall() ? new Promise<never>(noop) : thunk()
+      import.meta.env.DEV && takeTestDecryptStall()
+        ? new Promise<never>(noop)
+        : delay > 0
+          ? sleep(delay).then(thunk)
+          : thunk()
 
     return withDeadline(answer, DECRYPT_DEADLINE)
   })

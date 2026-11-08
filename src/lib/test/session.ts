@@ -12,6 +12,8 @@ export const TEST_DECRYPT_FAILURES_KEY = "__TEST_DECRYPT_FAILURES__"
 
 export const TEST_DECRYPT_STALLS_KEY = "__TEST_DECRYPT_STALLS__"
 
+export const TEST_DECRYPT_DELAY_KEY = "__TEST_DECRYPT_DELAY__"
+
 // Called when the session is restored at startup. Yields a session only when Playwright has
 // injected one, so it is a no-op for real users.
 export const maybeGetTestSession = (): Maybe<Session> =>
@@ -48,4 +50,16 @@ export const takeTestDecryptStall = (): boolean => {
   scope[TEST_DECRYPT_STALLS_KEY] = left - 1
 
   return true
+}
+
+// How long every decryption takes, in milliseconds, standing in for the round trip to a remote
+// signer. A test sets window.__TEST_DECRYPT_DELAY__ at any moment, or VITE_TEST_DECRYPT_DELAY in
+// the page's env to have it from the first load. Never for real users.
+export const getTestDecryptDelay = (): number => {
+  const scope = globalThis as {
+    [TEST_DECRYPT_DELAY_KEY]?: number
+    __TEST_ENV__?: Record<string, string>
+  }
+
+  return scope[TEST_DECRYPT_DELAY_KEY] ?? Number(scope.__TEST_ENV__?.VITE_TEST_DECRYPT_DELAY ?? 0)
 }
