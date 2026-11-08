@@ -349,6 +349,10 @@ On 31/10/2026 Jaime said that with the chat left open on the desktop, Node Check
 
 On 07/11/2026 Jaime noticed that hovering a message no longer showed the emoji, reply and actions buttons, though clicking their place worked. Tailwind 4 wraps `group-hover:` in `@media (hover: hover)`, and that browser answers `false` to `(hover: hover)`, so the buttons stayed at `opacity-0` while still taking clicks. `RoomItem.svelte` and `ChatMessage.svelte` now use `[.group:hover_&]:opacity-100`, which has no media condition. Touch screens are unaffected: both blocks only render when `isMobile` is false.
 
+### 35. The settings Save bar stays above the mobile nav
+
+On 08/11/2026 Jaime reported that on an iPhone with a normal screen the Save button of Alerts was hidden behind the bottom nav (rooms, direct messages, profile), and only showed after lowering the font size in Theme; on a larger iPhone it showed cut in half. `.page__content` reserved the nav with `mb-14`, but `max-h-screen` let a page taller than the screen take the whole screen height, so its last 3.5rem ran under the fixed nav and the sticky Save bar of Alerts, Privacy and Content stopped there. `page.css` now caps it on mobile at `100dvh` minus the nav and the safe areas, and the Save bar wraps, since on a 320px screen "Save Changes" was also cut at the right edge. Measured with Playwright on iPhone SE and iPhone 14 Pro Max: on the SE the scroll area now ends where the nav begins.
+
 ## Updating from upstream
 
 ```sh
