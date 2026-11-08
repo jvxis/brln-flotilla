@@ -353,6 +353,10 @@ On 07/11/2026 Jaime noticed that hovering a message no longer showed the emoji, 
 
 On 08/11/2026 Jaime reported that on an iPhone with a normal screen the Save button of Alerts was hidden behind the bottom nav (rooms, direct messages, profile), and only showed after lowering the font size in Theme; on a larger iPhone it showed cut in half. `.page__content` reserved the nav with `mb-14`, but `max-h-screen` let a page taller than the screen take the whole screen height, so its last 3.5rem ran under the fixed nav and the sticky Save bar of Alerts, Privacy and Content stopped there. `page.css` now caps it on mobile at `100dvh` minus the nav and the safe areas, and the Save bar wraps, since on a 320px screen "Save Changes" was also cut at the right edge. Measured with Playwright on iPhone SE and iPhone 14 Pro Max: on the SE the scroll area now ends where the nav begins.
 
+### 36. Direct messages wait for the inbox list before offering to enable them
+
+On 08/11/2026 Jaime moved to another signer and, on each device, the first tap on direct messages showed the "enable direct messages" modal; the second tap went straight in. Right after a new sign-in the member's inbox relay list (kind 10050) had not arrived yet, so `goToChat` saw none. Confirming the modal would have republished `DEFAULT_MESSAGING_RELAYS` over the member's own list. `goToChat` now waits up to `MESSAGING_RELAYS_WAIT` (4 s) for the list to load and only shows the modal when it really is missing; the modal's Enable checks again and skips publishing when the list showed up meanwhile. A key with no list still gets the modal, in about half a second.
+
 ## Updating from upstream
 
 ```sh

@@ -68,8 +68,30 @@ export const makeRoomPath = (url: string, h: string) => `/spaces/${encodeRelay(u
 
 export const makeSpaceChatPath = (url: string) => makeRoomPath(url, "chat")
 
-export const goToChat = (pubkeys: string[] = [], options: {replaceState?: boolean} = {}) => {
-  if (messagingRelayLists.get().urls(user.get().pubkey).get().length === 0) {
+const hasMessagingRelays = () => messagingRelayLists.get().urls(user.get().pubkey).get().length > 0
+
+// Right after signing in on a new device or with a new signer, the member's inbox relay list
+// (kind 10050) has not arrived yet, and the first tap on direct messages offered to "enable"
+// them, which republishes the default list over the member's own (08/11/2026). Wait briefly for
+// the list before deciding that it does not exist.
+export const MESSAGING_RELAYS_WAIT = 4000
+
+export const waitForMessagingRelays = async () => {
+  if (hasMessagingRelays()) return true
+
+  await Promise.race([
+    messagingRelayLists
+      .get()
+      .load(user.get().pubkey)
+      .catch(() => undefined),
+    new Promise(resolve => setTimeout(resolve, MESSAGING_RELAYS_WAIT)),
+  ])
+
+  return hasMessagingRelays()
+}
+
+export const goToChat = async (pubkeys: string[] = [], options: {replaceState?: boolean} = {}) => {
+  if (!(await waitForMessagingRelays())) {
     pushModal(ChatEnable, {next: () => goToChat(pubkeys, options)})
   } else if (pubkeys.length === 0) {
     navigate(lastChatUrl ?? "/chat", options)

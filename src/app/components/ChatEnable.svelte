@@ -15,6 +15,7 @@
   import {publish} from "@app/publish"
   import {DEFAULT_RELAYS, DEFAULT_MESSAGING_RELAYS} from "@app/env"
   import {pushToast} from "@app/toast"
+  import {waitForMessagingRelays} from "@app/routes"
 
   type Props = {
     next: () => void
@@ -30,6 +31,12 @@
     loading = true
 
     try {
+      // The list may have arrived while the modal was open: never publish the defaults over it.
+      if (await waitForMessagingRelays()) {
+        await next()
+        return
+      }
+
       const relayUrls = $userRelayList?.urls() ?? []
 
       if (relayUrls.length === 0) {
