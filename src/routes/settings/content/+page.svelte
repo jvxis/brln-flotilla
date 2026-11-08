@@ -183,7 +183,8 @@
         {/snippet}
       </Field>
     </Card>
-    <Card class="sticky -bottom-3 shadow-md flex flex-row flex-wrap items-center justify-between gap-4">
+    <Card
+      class="sticky -bottom-3 shadow-md flex flex-row flex-wrap items-center justify-between gap-4">
       <Button class="button button-neutral" onclick={reset} disabled={loading}
         >Discard Changes</Button>
       <Button class="button button-primary" type="submit" disabled={loading}>

@@ -138,7 +138,8 @@
         {/snippet}
       </FieldInline>
     </div>
-    <div class="card sticky -bottom-3 shadow-md flex flex-row flex-wrap items-center justify-between gap-4">
+    <div
+      class="card sticky -bottom-3 shadow-md flex flex-row flex-wrap items-center justify-between gap-4">
       <Button class="button button-neutral" onclick={reset} disabled={loading}
         >Discard Changes</Button>
       <Button type="submit" class="button button-primary" disabled={loading}>
