@@ -369,6 +369,10 @@ The real cause of 08/11/2026. Welshman's `Wraps` queue opens one wrap at a time 
 
 Moving to another signer left Jaime's devices without their stored plaintexts, so each had to open all 1,140 wraps again: two round trips to the remote signer apiece, about twenty minutes per device, and a direct message sent meanwhile showed only after all of them, since welshman's queue opens wraps in arrival order, fifty at a time. `wrapOrderPolicy` (`src/app/wrapOrder.ts`) keeps the queue newest first by the wrap's date and works in batches of five. The date is backdated by at most two days, so a wrap that just arrived still sorts ahead of almost all of a history, and recent conversations fill in first. e2e: "a direct message that arrives live opens ahead of a history still being opened" (thirty wraps dated ten to forty days back, every decryption slowed to 400 ms with `VITE_TEST_DECRYPT_DELAY`) passes with the policy and fails without it.
 
+### 40. No links out of the club in About, the space details and the privacy settings
+
+Asked by Jaime on 08/11/2026. Settings, About no longer offers to zap Flotilla's author, its "Get Support" opens the club's Suporte room instead of `support.flotilla.social`, the source code, blog and podcast icons are gone, and the credits ("Built on Flotilla, by hodlbod.", "Icons by 480 Design.") stay as plain text; the BR⚡LN about link (`VITE_PLATFORM_ABOUT`) stays. The space details drop the relay's Software, Version and Auth Required badges. In privacy, "Report usage?" shows only when Plausible is configured (the club's build sends usage nowhere, so the switch promised nothing), and "Send Logs" only when `VITE_PLATFORM_LOGEE` is set; `deploy/brln.env` now points it at the BR⚡LN Services account, so a member's logs reach the club. `spaces.spec.ts` asserts the three badges are absent.
+
 ## Updating from upstream
 
 ```sh

@@ -444,9 +444,10 @@ test("US-015 view a space's details", async ({seed, as}) => {
 
   await expect(carol.getByText(/Administrator:/)).toBeVisible()
   await expect(carol.getByText("Contact: harbormaster@space.test")).toBeVisible()
-  await expect(carol.getByText(/Software:/)).toBeVisible()
-  await expect(carol.getByText(/Version:/)).toBeVisible()
-  await expect(carol.getByText("Auth Required")).toBeVisible()
+  // BR⚡LN: the relay's software, version and "Auth Required" are not shown (PATCHES 40)
+  await expect(carol.getByText(/Software:/)).toHaveCount(0)
+  await expect(carol.getByText(/Version:/)).toHaveCount(0)
+  await expect(carol.getByText("Auth Required")).toHaveCount(0)
   await expect(carol.getByText("Payment Required")).toBeVisible()
   await expect(carol.getByText("Min PoW: 20")).toBeVisible()
 

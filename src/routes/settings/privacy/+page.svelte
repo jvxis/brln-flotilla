@@ -14,7 +14,7 @@
   import {blockedRelayLists, user} from "@app/core"
   import {pushModal} from "@app/modal"
   import {pushToast} from "@app/toast"
-  import {PLATFORM_NAME} from "@app/env"
+  import {PLATFORM_LOGEE, PLATFORM_NAME, PLAUSIBLE_DOMAIN, PLAUSIBLE_URL} from "@app/env"
   import {sendLogs} from "@app/logger"
   import {
     RelayAuthMode,
@@ -110,32 +110,38 @@
           <p>These relays won't be used unless explicitly requested.</p>
         {/snippet}
       </FieldInline>
-      <FieldInline>
-        {#snippet label()}
-          <p>Report usage?</p>
-        {/snippet}
-        {#snippet input()}
-          <ToggleInput bind:checked={$settings.report_usage} />
-        {/snippet}
-        {#snippet info()}
-          <p>Allow {PLATFORM_NAME} to collect anonymous usage data.</p>
-        {/snippet}
-      </FieldInline>
-      <FieldInline>
-        {#snippet label()}
-          <p>Something went wrong?</p>
-        {/snippet}
-        {#snippet input()}
-          <Button class="button button-neutral" onclick={send} disabled={sendingLogs}>
-            <Spinner loading={sendingLogs}>Send Logs</Spinner>
-          </Button>
-        {/snippet}
-        {#snippet info()}
-          <p>
-            Send a record of recent app activity to the {PLATFORM_NAME} team as a direct message.
-          </p>
-        {/snippet}
-      </FieldInline>
+      <!-- Only where there is something behind them (08/11/2026): the club's build sends usage
+           data nowhere, so the switch was a promise it did not keep. -->
+      {#if PLAUSIBLE_URL && PLAUSIBLE_DOMAIN}
+        <FieldInline>
+          {#snippet label()}
+            <p>Report usage?</p>
+          {/snippet}
+          {#snippet input()}
+            <ToggleInput bind:checked={$settings.report_usage} />
+          {/snippet}
+          {#snippet info()}
+            <p>Allow {PLATFORM_NAME} to collect anonymous usage data.</p>
+          {/snippet}
+        </FieldInline>
+      {/if}
+      {#if PLATFORM_LOGEE}
+        <FieldInline>
+          {#snippet label()}
+            <p>Something went wrong?</p>
+          {/snippet}
+          {#snippet input()}
+            <Button class="button button-neutral" onclick={send} disabled={sendingLogs}>
+              <Spinner loading={sendingLogs}>Send Logs</Spinner>
+            </Button>
+          {/snippet}
+          {#snippet info()}
+            <p>
+              Send a record of recent app activity to the {PLATFORM_NAME} team as a direct message.
+            </p>
+          {/snippet}
+        </FieldInline>
+      {/if}
     </Card>
     <Card
       class="sticky -bottom-3 shadow-md flex flex-row flex-wrap items-center justify-between gap-4">

@@ -63,7 +63,9 @@
       </div>
     {/if}
     {#if $relay}
-      {@const {pubkey, software, version, limitation} = $relay}
+      <!-- The relay's software, version and "Auth Required" are left out (08/11/2026, Jaime): for
+           a member they are noise, and the software line links out to the relay's code. -->
+      {@const {pubkey, limitation} = $relay}
       <div class="flex flex-wrap gap-1">
         {#if pubkey}
           <div class="badge badge-neutral">
@@ -74,21 +76,6 @@
           <div class="badge badge-neutral">
             <span>Contact: {$relay.contact}</span>
           </div>
-        {/if}
-        {#if software}
-          <div class="badge badge-neutral">
-            <span>Software: {software}</span>
-          </div>
-        {/if}
-        {#if version}
-          <div class="badge badge-neutral">
-            <span>Version: {version}</span>
-          </div>
-        {/if}
-        {#if limitation?.auth_required}
-          <p class="badge badge-warning">
-            <span>Auth Required</span>
-          </p>
         {/if}
         {#if limitation?.payment_required}
           <p class="badge badge-warning">
