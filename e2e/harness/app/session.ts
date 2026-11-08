@@ -9,6 +9,8 @@ const TEST_EVENTS_KEY = "__TEST_EVENTS__"
 
 const TEST_DECRYPT_FAILURES_KEY = "__TEST_DECRYPT_FAILURES__"
 
+const TEST_DECRYPT_STALLS_KEY = "__TEST_DECRYPT_STALLS__"
+
 // A nip01 session in the {method, data} shape @welshman/app's session handlers deserialize, so
 // restoreSession can build a signer from it without the storage encoding a real login goes through.
 // addInitScript runs before any page script, so this has to be called before navigating.
@@ -35,5 +37,13 @@ export const injectEvents = (context: BrowserContext, events: TrustedEvent[]) =>
 export const refuseDecryptions = (page: Page, count: number) =>
   page.evaluate(([key, value]) => Object.assign(window, {[key]: value}), [
     TEST_DECRYPT_FAILURES_KEY,
+    count,
+  ] as const)
+
+// From now on the signer never answers the next `count` decryptions, like a remote signer whose
+// request was dropped on the way. Must match TEST_DECRYPT_STALLS_KEY in src/lib/test/session.ts.
+export const stallDecryptions = (page: Page, count: number) =>
+  page.evaluate(([key, value]) => Object.assign(window, {[key]: value}), [
+    TEST_DECRYPT_STALLS_KEY,
     count,
   ] as const)

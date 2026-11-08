@@ -1,4 +1,6 @@
 import {npubEncode} from "nostr-tools/nip19"
+import {finalizeEvent, generateSecretKey, getEventHash} from "nostr-tools/pure"
+import * as nip44 from "nostr-tools/nip44"
 import type {Locator, Page} from "@playwright/test"
 import {DAY, HOUR, MINUTE} from "@welshman/lib"
 import {DIRECT_MESSAGE, REACTION, RELAYS} from "@welshman/util"
@@ -24,6 +26,7 @@ import {
   readCachedEvents,
   roomPath,
   send,
+  stallDecryptions,
   test,
   topDialog,
   users,
@@ -958,4 +961,132 @@ test("BR⚡LN a direct message the signer could not open is opened again", async
   await tabComesBack(alice)
 
   await expect(message).toBeVisible({timeout: 15_000})
+})
+
+// The club's own tools (the Services account, the bots) send direct messages through the Go nip59,
+// which dates the wrap and its seal up to ten hours back; other clients go up to two days. On
+// 08/11/2026 a wrap sent that way sat on the club's relay, was served live to a plain subscriber
+// in under a second, and never showed on Jaime's desktop or phone until a reload. These send one
+// the way those tools do, from outside the app, while the page is left alone.
+const backdatedWrap = (from: TestUser, to: TestUser, content: string, hoursBack: number) => {
+  const now = Math.floor(Date.now() / 1000)
+  const dated = now - hoursBack * 3600
+  const fromSecret = Uint8Array.from(Buffer.from(from.secret, "hex"))
+  const rumor = {
+    kind: DIRECT_MESSAGE,
+    created_at: now,
+    tags: [["p", to.pubkey]],
+    content,
+    pubkey: from.pubkey,
+  }
+  const seal = finalizeEvent(
+    {
+      kind: 13,
+      created_at: dated,
+      tags: [],
+      content: nip44.encrypt(
+        JSON.stringify({...rumor, id: getEventHash(rumor)}),
+        nip44.getConversationKey(fromSecret, to.pubkey),
+      ),
+    },
+    fromSecret,
+  )
+  const ephemeral = generateSecretKey()
+
+  return finalizeEvent(
+    {
+      kind: 1059,
+      created_at: dated,
+      tags: [["p", to.pubkey]],
+      content: nip44.encrypt(JSON.stringify(seal), nip44.getConversationKey(ephemeral, to.pubkey)),
+    },
+    ephemeral,
+  )
+}
+
+test("BR⚡LN a direct message dated hours back by the club's tools arrives live", async ({
+  seed,
+  as,
+  zooid,
+}) => {
+  const scenario = await seedPair(seed)
+  const alice = await as(users.alice, "/chat")
+
+  await expect(chatItems(alice).filter({hasText: "earlier today"})).toBeVisible()
+
+  await zooid.publish(
+    scenario.space("space").url,
+    backdatedWrap(users.bob, users.alice, "sent by a club tool", 7),
+    {as: users.bob},
+  )
+
+  // Well inside the 90 s catch-up: this is the live subscription, not the safety net
+  await expect(chatItems(alice).filter({hasText: "sent by a club tool"})).toBeVisible({
+    timeout: 20_000,
+  })
+})
+
+// Fails on every version tried (0.1.73 and 0.1.74): after the cut the transcript shows the probe
+// going out and then nothing at all -- no new connection, no new AUTH, no request asked again. Not
+// yet known whether that is the app or the way dropFromRelays stands in for a dead connection (it
+// keeps the socket open and swallows the relay's side, so the close may never complete). Kept as a
+// fixme to come back to; the cause of 08/11/2026 was the decryption queue, covered below.
+test.fixme("BR⚡LN a direct message dated hours back arrives live after the socket reconnects", async ({
+  seed,
+  as,
+  zooid,
+}) => {
+  test.setTimeout(120_000)
+
+  const scenario = await seedPair(seed)
+  const alice = await as(users.alice, "/chat")
+
+  await expect(chatItems(alice).filter({hasText: "earlier today"})).toBeVisible()
+
+  // Nothing comes back from the relay for long enough that the socket's probe goes unanswered and
+  // welshman closes and reopens it, resending the live subscription the way it does on any drop.
+  const restore = dropFromRelays(alice.context(), () => true)
+
+  await alice.waitForTimeout(45_000)
+  restore()
+  await alice.waitForTimeout(5_000)
+
+  await zooid.publish(
+    scenario.space("space").url,
+    backdatedWrap(users.bob, users.alice, "after the socket came back", 7),
+    {as: users.bob},
+  )
+
+  await expect(chatItems(alice).filter({hasText: "after the socket came back"})).toBeVisible({
+    timeout: 20_000,
+  })
+})
+
+// A remote signer that never answers one decryption -- its request refused by the signer relay as
+// rate-limited, which on 08/11/2026 happened each time the chat loaded on Jaime's devices -- used to
+// stop every direct message after it from opening until a reload. Each one now gets a deadline.
+test("BR⚡LN direct messages keep opening after the signer loses a decryption", async ({
+  seed,
+  as,
+}) => {
+  test.setTimeout(120_000)
+
+  await seedPair(seed)
+
+  const {alice, bob} = await openPair(as)
+
+  await stallDecryptions(alice, 1)
+  await sendDm(bob, "this one is lost")
+  await sendDm(bob, "and this one after it")
+
+  // Past the deadline the lost one is given up on and the queue goes on to the next
+  await expect(chatItems(alice).filter({hasText: "and this one after it"})).toBeVisible({
+    timeout: 40_000,
+  })
+
+  // And the lost one is opened on the next catch-up
+  await tabComesBack(alice)
+  await chatItems(alice).filter({hasText: "Bob Barnacle"}).click()
+
+  await expect(bubble(alice, "this one is lost")).toBeVisible({timeout: 20_000})
 })

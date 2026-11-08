@@ -35,7 +35,7 @@ export type {SeededOpenRelay} from "./seed/openRelay"
 export type {SeededRumor, SeededSpace} from "./seed/space"
 export type {OpenRelayName, SpaceName, TenantName} from "./zooid/config"
 export type {PublishedEvent, TranscriptEntry} from "./net/websocket"
-export {refuseDecryptions} from "./app/session"
+export {refuseDecryptions, stallDecryptions} from "./app/session"
 export {
   closeSubscriptions,
   dropFromRelays,

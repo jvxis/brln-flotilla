@@ -10,6 +10,8 @@ export const TEST_EVENTS_KEY = "__TEST_EVENTS__"
 
 export const TEST_DECRYPT_FAILURES_KEY = "__TEST_DECRYPT_FAILURES__"
 
+export const TEST_DECRYPT_STALLS_KEY = "__TEST_DECRYPT_STALLS__"
+
 // Called when the session is restored at startup. Yields a session only when Playwright has
 // injected one, so it is a no-op for real users.
 export const maybeGetTestSession = (): Maybe<Session> =>
@@ -30,6 +32,20 @@ export const takeTestDecryptFailure = (): boolean => {
   if (left <= 0) return false
 
   scope[TEST_DECRYPT_FAILURES_KEY] = left - 1
+
+  return true
+}
+
+// Whether this decryption should never be answered at all, standing in for a remote signer whose
+// request or answer was dropped on the way (a signer relay refusing it as rate-limited). A test sets
+// window.__TEST_DECRYPT_STALLS__ to how many to swallow. Never for real users.
+export const takeTestDecryptStall = (): boolean => {
+  const scope = globalThis as {[TEST_DECRYPT_STALLS_KEY]?: number}
+  const left = scope[TEST_DECRYPT_STALLS_KEY] ?? 0
+
+  if (left <= 0) return false
+
+  scope[TEST_DECRYPT_STALLS_KEY] = left - 1
 
   return true
 }

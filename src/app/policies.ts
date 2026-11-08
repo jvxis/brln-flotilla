@@ -29,6 +29,7 @@ import {app, logger, appPolicies, session} from "@app/core"
 import {makeSocketPolicyAuthRetry} from "@app/authRetry"
 import {socketPolicyMessageLimit} from "@app/messageLimit"
 import {socketPolicyWrapDrift} from "@app/wrapDrift"
+import {decryptDeadlinePolicy} from "@app/decryptDeadline"
 import {BLOCKED_RELAYS, PLATFORM_RELAYS} from "@app/env"
 import {userSettingsValues, getSetting, RelayAuthMode} from "@app/settings"
 
@@ -264,4 +265,5 @@ export const socketPolicy: AppPolicy = $app => {
   }
 }
 
-appPolicies.push(ingestPolicy, authPolicy, socketPolicy)
+// The deadline goes last, so it wraps every other signer policy: see decryptDeadline.ts
+appPolicies.push(ingestPolicy, authPolicy, socketPolicy, decryptDeadlinePolicy)
