@@ -357,6 +357,10 @@ On 08/11/2026 Jaime reported that on an iPhone with a normal screen the Save but
 
 On 08/11/2026 Jaime moved to another signer and, on each device, the first tap on direct messages showed the "enable direct messages" modal; the second tap went straight in. Right after a new sign-in the member's inbox relay list (kind 10050) had not arrived yet, so `goToChat` saw none. Confirming the modal would have republished `DEFAULT_MESSAGING_RELAYS` over the member's own list. `goToChat` now waits up to `MESSAGING_RELAYS_WAIT` (4 s) for the list to load and only shows the modal when it really is missing; the modal's Enable checks again and skips publishing when the list showed up meanwhile. A key with no list still gets the modal, in about half a second.
 
+### 37. Direct messages keep arriving live after a socket reconnects
+
+On 08/11/2026 Jaime's desktop stopped receiving direct messages until a reload. Gift wraps are backdated on purpose (NIP-59: up to two days; the club's relay holds wraps dated 47 hours before they were sent), so a request for them has to reach back past that drift. `sync.ts` did that for the requests it builds, but welshman's lifecycle policy resends every pending request on reconnect through `catchUpFilter`, which replaces `since` with the moment the socket last received anything. After the first reconnect, and an idle socket is probed and reopened every few minutes, the live subscription asked for wraps dated from a few minutes ago and the relay withheld every new one. `socketPolicyWrapDrift` (`src/app/wrapDrift.ts`) now lowers `since` to at least two days back on every wrap request that leaves a socket, whoever built it; `WRAP_DRIFT` in `sync.ts` goes from 100,000 s to the same two days.
+
 ## Updating from upstream
 
 ```sh
