@@ -24,7 +24,6 @@
   const members = deriveRoomMembers(url, h)
 
   const back = () => history.back()
-
 </script>
 
 <Modal>

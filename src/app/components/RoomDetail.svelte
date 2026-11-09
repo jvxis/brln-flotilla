@@ -52,7 +52,6 @@
 
   const showMembers = () => pushModal(RoomMembers, {url, h})
 
-
   const toggleFavorite = () => {
     if (isFavorite) {
       $roomLists.removeRoom(h, url).then(publish)
