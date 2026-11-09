@@ -2,7 +2,8 @@ import {neventEncode, npubEncode} from "nostr-tools/nip19"
 import {HOUR, MINUTE} from "@welshman/lib"
 import {MESSAGE, makeEvent} from "@welshman/util"
 import {Article, Thread} from "@welshman/domain"
-import {expect, roomPath, spacePath, test, users} from "../harness"
+import type {Page} from "@playwright/test"
+import {chatPath, expect, roomPath, spacePath, test, users} from "../harness"
 
 // A handle to a seeded event, which only reads once seed() has drained its queue.
 type Seeded = {readonly id: string}
@@ -519,4 +520,57 @@ test("US-067 copy a shared invoice or token", async ({seed, as}) => {
 
   await expect(toast).toContainText("Copied to clipboard!")
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(CASHU)
+})
+
+// A node's address is one word of ninety-odd characters. On a phone a bubble sized itself to it:
+// it grew wider than the screen and, being right-aligned, the user's own message lost the start
+// of every line off the left edge (09/11/2026).
+const NODE_URI =
+  "03884d30a18627e7d1db6899c5c43f42f31274560966d2422b7e2cd50a55db0124@154.38.181.197:10100"
+
+test("a long unbroken word stays inside the bubble on a phone", async ({seed, as}) => {
+  let own!: Seeded
+  let other!: Seeded
+  let posted!: Seeded
+
+  const scenario = await seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    space.room("general", {name: "General"})
+    space.join(user.alice, "general")
+    space.join(user.bob, "general")
+    space.relayList(user.alice)
+    space.relayList(user.bob)
+    space.messagingRelayList(user.alice)
+    space.messagingRelayList(user.bob)
+    other = space.dm(user.bob, [user.alice], `Abra o canal para ${NODE_URI} hoje`, at(40, MINUTE))
+    own = space.dm(user.alice, [user.bob], `Conecte em ${NODE_URI} antes`, at(30, MINUTE))
+
+    posted = space.message(user.alice, "general", `No grupo: ${NODE_URI}`, at(20, MINUTE))
+  })
+
+  const width = 390
+  const phone = {context: {viewport: {width, height: 844}, hasTouch: true}}
+  const insideTheScreen = async (page: Page, selector: string) => {
+    const element = page.locator(selector)
+
+    await expect(element).toContainText(NODE_URI.slice(0, 20))
+
+    const box = (await element.boundingBox())!
+
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(width)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+  }
+
+  // The direct message: a bubble per message, the user's own on the right.
+  const chat = await as(users.alice, chatPath(users.bob.pubkey), phone)
+
+  await insideTheScreen(chat, `[data-event="${own.id}"] .chat-bubble`)
+  await insideTheScreen(chat, `[data-event="${other.id}"] .chat-bubble`)
+
+  // A room lays messages out as a list rather than bubbles, and must not overflow either.
+  const room = await as(users.alice, roomPath(scenario.space("space").url, "general"), phone)
+
+  await insideTheScreen(room, `[data-event="${posted.id}"]`)
 })
