@@ -560,7 +560,9 @@ test("a long unbroken word stays inside the bubble on a phone", async ({seed, as
 
     expect(box.x).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(width)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    )
   }
 
   // The direct message: a bubble per message, the user's own on the right.

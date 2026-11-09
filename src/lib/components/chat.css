@@ -1,6 +1,6 @@
 @layer components {
   .chat-bubble {
-    @apply bg-surface-less text-content mx-1 mb-2 flex min-w-[100px] max-w-full cursor-auto flex-col gap-1 rounded-2xl p-2 text-left lg:max-w-2xl;
+    @apply bg-surface-less text-content mx-1 mb-2 flex max-w-full min-w-[100px] cursor-auto flex-col gap-1 rounded-2xl p-2 text-left lg:max-w-2xl;
   }
 
   .chat-bubble--user {
