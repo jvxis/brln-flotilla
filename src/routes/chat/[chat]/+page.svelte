@@ -29,13 +29,12 @@
     if (!$dmNotificationsPrompted) {
       dmNotificationsPrompted.set(true)
 
-      const permission = await Push.request()
+      const permission = await Push.request().catch(() => "denied")
 
+      // BR⚡LN: the member did not ask for this, so a refusal is not an error to show them. Turning
+      // push on in the settings still says why it failed.
       if (!permission.startsWith("granted")) {
-        return pushToast({
-          theme: "error",
-          message: `Failed to request notification permissions (${permission}).`,
-        })
+        return
       }
 
       notificationSettings.update(current => ({

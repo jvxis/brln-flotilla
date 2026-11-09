@@ -15,6 +15,12 @@ export class WebNotifications implements IPushAdapter {
   _unsubscriber = maybe<Unsubscriber>()
 
   async request(prompt = true) {
+    // BR⚡LN: Safari on an iPhone, outside the installed app, has no Notification at all, and naming
+    // an undeclared global throws rather than reading as undefined.
+    if (typeof Notification === "undefined") {
+      return "denied"
+    }
+
     if (prompt && Notification?.permission === "default") {
       await Notification.requestPermission()
     }

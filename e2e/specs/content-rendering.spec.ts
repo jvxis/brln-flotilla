@@ -574,3 +574,42 @@ test("a long unbroken word stays inside the bubble on a phone", async ({seed, as
 
   await insideTheScreen(room, `[data-event="${posted.id}"]`)
 })
+
+// 09/11/2026, Jaime: the newest message sat flush against the box to write in, on the phone and
+// on the desktop. The list now keeps a little room above the composer.
+test("the newest message keeps a gap above the composer", async ({seed, as}) => {
+  let last!: Seeded
+  let posted!: Seeded
+
+  const scenario = await seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    space.room("general", {name: "General"})
+    space.join(user.alice, "general")
+    space.join(user.bob, "general")
+    space.relayList(user.alice)
+    space.relayList(user.bob)
+    space.messagingRelayList(user.alice)
+    space.messagingRelayList(user.bob)
+    last = space.dm(user.bob, [user.alice], "okay, sem problema", at(5, MINUTE))
+    posted = space.message(user.bob, "general", "a última da sala", at(5, MINUTE))
+  })
+
+  const phone = {context: {viewport: {width: 390, height: 844}, hasTouch: true}}
+  const gap = async (page: Page, message: string) => {
+    await expect(page.locator(message)).toBeVisible()
+
+    const bottom = (await page.locator(message).boundingBox())!
+    const compose = (await page.locator(".room__compose").first().boundingBox())!
+
+    return compose.y - (bottom.y + bottom.height)
+  }
+
+  const chat = await as(users.alice, chatPath(users.bob.pubkey), phone)
+
+  expect(await gap(chat, `[data-event="${last.id}"] .chat-bubble`)).toBeGreaterThanOrEqual(12)
+
+  const room = await as(users.alice, roomPath(scenario.space("space").url, "general"), phone)
+
+  expect(await gap(room, `[data-event="${posted.id}"]`)).toBeGreaterThanOrEqual(8)
+})

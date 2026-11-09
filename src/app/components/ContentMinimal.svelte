@@ -112,7 +112,7 @@
     <div
       class={cx(
         "overflow-hidden text-ellipsis",
-        singleLine ? "whitespace-nowrap" : "wrap-break-word",
+        singleLine ? "whitespace-nowrap" : "wrap-anywhere",
       )}>
       {#each shortContent as parsed, i (i)}
         {#if isNewline(parsed)}

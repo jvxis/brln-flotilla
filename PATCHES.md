@@ -373,6 +373,14 @@ Moving to another signer left Jaime's devices without their stored plaintexts, s
 
 Asked by Jaime on 08/11/2026. Settings, About no longer offers to zap Flotilla's author, its "Get Support" opens the club's Suporte room instead of `support.flotilla.social`, the source code, blog and podcast icons are gone, and the credits ("Built on Flotilla, by hodlbod.", "Icons by 480 Design.") stay as plain text; the BR⚡LN about link (`VITE_PLATFORM_ABOUT`) stays. The space details drop the relay's Software, Version and Auth Required badges. In privacy, "Report usage?" shows only when Plausible is configured (the club's build sends usage nowhere, so the switch promised nothing), and "Send Logs" only when `VITE_PLATFORM_LOGEE` is set; `deploy/brln.env` now points it at the BR⚡LN Services account, so a member's logs reach the club. `spaces.spec.ts` asserts the three badges are absent.
 
+### 41. A long word no longer pushes a message off a phone's screen, and the first chat stops reporting refused notifications as an error
+
+On 09/11/2026 Jaime pasted, on his desktop, a reply with a node's address (`03884d30…@154.38.181.197:10100`, ninety-odd characters with no space) and on his iPhone the bubble lost the start of every line off the left edge. `Content` wrapped with `overflow-wrap: break-word`, which breaks the word while drawing but not while measuring, so the bubble sized itself to the whole word, grew wider than the screen and, being the member's own and so right-aligned, overflowed to the left. `Content` and `ContentMinimal` now use `wrap-anywhere` (`overflow-wrap: anywhere`, which also lowers the width the word asks for) and `.chat-bubble` is capped at `max-w-full`. e2e: "a long unbroken word stays inside the bubble on a phone" (390 px wide, the member's own bubble, the other side's, and a room's list layout) failed with the bubble starting 390 px off screen and passes now.
+
+Jaime also noticed that the newest message sat flush against the box to write in, on the phone and on the desktop: the direct-message list now has `pb-5` and a room's `.room__content` `pb-3` (both are `flex-col-reverse`, so the bottom padding is the gap above the composer). e2e: "the newest message keeps a gap above the composer".
+
+The same pass at phone size found the first chat opened greeting the member with a red "Failed to request notification permissions (denied)": the chat asks for notifications on its own the first time a conversation opens, and a member who says no, or whose browser has none (Safari on an iPhone outside the installed app), had not asked for anything. The refusal is now silent there; turning push on in the settings still says why it failed. `WebNotifications.request` also checks `typeof Notification` first, since naming the missing global threw rather than reading as undefined. e2e: "opening the first chat with notifications refused shows no error" fails without the change and passes with it.
+
 ## Updating from upstream
 
 ```sh

@@ -1134,3 +1134,34 @@ test("BR⚡LN a direct message that arrives live opens ahead of a history still 
     timeout: 10_000,
   })
 })
+
+// The first chat opened asks the browser for notifications on its own. A member who says no, or
+// whose browser has no notifications (Safari on an iPhone outside the installed app), was met with
+// a red "Failed to request notification permissions (denied)" they never asked for (09/11/2026).
+test("opening the first chat with notifications refused shows no error", async ({seed, as}) => {
+  let hello!: SeededRumor
+
+  await seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    seedPerson(space, user.alice, "Alice Anchor")
+    seedPerson(space, user.bob, "Bob Barnacle")
+    space.messagingRelayList(user.alice)
+    space.messagingRelayList(user.bob)
+    hello = space.dm(user.bob, [user.alice], "oi, tudo bem?", at(10, MINUTE))
+  })
+
+  const alice = await as(users.alice, chatPath(users.bob.pubkey), {
+    context: {viewport: {width: 390, height: 844}, hasTouch: true},
+  })
+  // A toast leaves on its own after a few seconds, so this waits for one to turn up rather than
+  // looking once and maybe missing it.
+  const error = alice.getByText("Failed to request notification permissions")
+  const shown = error.waitFor({timeout: 8000}).then(
+    () => true,
+    () => false,
+  )
+
+  await expect(message(alice, hello.id)).toBeVisible()
+  expect(await shown).toBe(false)
+})
