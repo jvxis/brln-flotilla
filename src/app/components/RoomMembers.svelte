@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AddCircle from "@assets/icons/add-circle.svg?dataurl"
   import AltArrowLeft from "@assets/icons/alt-arrow-left.svg?dataurl"
   import Button from "@lib/components/Button.svelte"
   import Icon from "@lib/components/Icon.svelte"
@@ -12,10 +11,8 @@
   import ModalSubtitle from "@lib/components/ModalSubtitle.svelte"
   import Profile from "@app/components/Profile.svelte"
   import RoomName from "@app/components/RoomName.svelte"
-  import RoomMembersAdd from "@app/components/RoomMembersAdd.svelte"
   import RoomMemberMenu from "@app/components/RoomMemberMenu.svelte"
-  import {deriveRoomMembers, deriveUserIsRoomAdmin} from "@app/rooms"
-  import {pushModal} from "@app/modal"
+  import {deriveRoomMembers} from "@app/rooms"
 
   interface Props {
     url: string
@@ -25,11 +22,9 @@
   const {url, h}: Props = $props()
 
   const members = deriveRoomMembers(url, h)
-  const userIsAdmin = deriveUserIsRoomAdmin(url, h)
 
   const back = () => history.back()
 
-  const addMember = () => pushModal(RoomMembersAdd, {url, h})
 </script>
 
 <Modal>
@@ -68,11 +63,7 @@
       <Icon icon={AltArrowLeft} />
       Go back
     </Button>
-    {#if $userIsAdmin}
-      <Button class="button button-primary" onclick={addMember}>
-        <Icon icon={AddCircle} />
-        Add members
-      </Button>
-    {/if}
+    <!-- BR⚡LN: no adding people to a room from the chat. Adding someone who was not in the space
+         also let them into the whole relay (Jaime, 09/11/2026). -->
   </ModalFooter>
 </Modal>

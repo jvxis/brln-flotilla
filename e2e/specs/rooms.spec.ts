@@ -1,7 +1,7 @@
 import {npubEncode} from "nostr-tools/nip19"
 import {DAY, HOUR, MINUTE, WEEK, bech32ToHex} from "@welshman/lib"
 import {getLnUrl} from "@welshman/util"
-import {Profile, displayPubkey} from "@welshman/domain"
+import {Profile} from "@welshman/domain"
 import type {Locator, Page} from "@playwright/test"
 import {
   composer,
@@ -413,10 +413,9 @@ test("US-021 request access to a private room and get approved", async ({seed, a
   await expect(message(admin, "found them, thanks")).toBeVisible()
 })
 
-test("US-022 bring people into a room", async ({seed, as}) => {
-  const dora = makeTestUser("dora")
-  const erik = makeTestUser("erik")
-
+test("US-022 rooms offer no way to bring people in", async ({seed, as}) => {
+  // BR⚡LN, 09/11/2026: membership comes from the club, never from an invite link or an admin.
+  // Adding someone who was not in the space through the room also let them into the relay.
   const scenario = await seed(({relay, user, at}) => {
     const space = relay("space")
 
@@ -424,91 +423,24 @@ test("US-022 bring people into a room", async ({seed, as}) => {
     space.join(user.admin, "general")
     space.join(user.bob, "general")
     space.profile(user.bob, {name: "Bob Barnacle"})
-    // A space member who isn't in the room yet. Her message is what loads her profile into the
-    // client that goes looking for her.
-    space.join(dora)
-    space.profile(dora, {name: "Dora Deckhand"})
-    space.message(dora, "general", "passing through", at(3, HOUR))
+    space.message(user.bob, "general", "passing through", at(3, HOUR))
   })
 
   const {url} = scenario.space("space")
   const admin = await as(users.admin, roomPath(url, "general"))
 
-  await expect(message(admin, "passing through")).toContainText("Dora Deckhand")
+  await expect(message(admin, "passing through")).toBeVisible()
 
   await openRoomDetail(admin)
-  await admin.getByRole("button", {name: "Create invite"}).click()
+  await expect(admin.getByRole("button", {name: "View All"})).toBeVisible()
+  await expect(admin.getByRole("button", {name: "Create invite"})).toHaveCount(0)
 
-  const inviteModal = dialog(admin, "Create a Room Invite")
-  // The link and its copy button share one bordered label, the only readonly field in the dialog.
-  const inviteField = inviteModal.locator("label:has(input[readonly])")
-  const invite = inviteField.locator("input[readonly]")
-
-  await expect(inviteModal.locator("canvas")).toBeVisible()
-  await expect(invite).toHaveValue(/\/join\?r=space\.test&c=[^&]*&h=general&code=.+/)
-
-  await inviteField.getByRole("button").click()
-
-  await expect(admin.getByText("Copied to clipboard!")).toBeVisible()
-
-  // The link is opened as a path rather than as an absolute url, which would leave the test's own
-  // dev server for the platform's.
-  const link = new URL(await invite.inputValue())
-  const carol = await as(users.carol, `/join${link.search}`)
-
-  await expect(carol.getByText("You're about to join:")).toBeVisible()
-
-  await carol.getByRole("button", {name: "Join Room"}).click()
-
-  await expect(carol.getByText("Welcome to the room!")).toBeVisible()
-  await expect(carol).toHaveURL(pathPattern(roomPath(url, "general")))
-  await expect(message(carol, "passing through")).toBeVisible()
-
-  await admin.getByRole("button", {name: "Done"}).click()
   await admin.getByRole("button", {name: "View All"}).click()
 
   const members = dialog(admin, "Members")
 
   await expect(members.getByText("Bob Barnacle")).toBeVisible()
-  await expect(members.getByText("Dora Deckhand")).toHaveCount(0)
-
-  await admin.getByRole("button", {name: "Add members"}).click()
-  await admin.getByPlaceholder("Search for profiles...").fill("Dora")
-  await admin.locator(".tiptap-suggestions").getByRole("button", {name: dora.pubkey}).click()
-  await admin.getByRole("button", {name: "Save changes"}).click()
-
-  await expect(admin.getByText("Members have successfully been added!")).toBeVisible()
-  await expect(members.getByText("Dora Deckhand")).toBeVisible()
-
-  // Somebody who isn't in the space yet has to be let into it first. A pubkey pasted into the
-  // search field selects that person outright, which is how erik is reachable without a profile.
-  await admin.getByRole("button", {name: "Add members"}).click()
-  await admin.getByPlaceholder("Search for profiles...").fill(erik.pubkey)
-  await admin.getByRole("button", {name: "Save changes"}).click()
-
-  await expect(admin.getByText("is not a member of this space. Add them?")).toBeVisible()
-
-  await admin.getByRole("button", {name: "Confirm"}).click()
-
-  await expect(admin.getByText("Members have successfully been added!")).toBeVisible()
-  await expect(members.getByText(displayPubkey(erik.pubkey))).toBeVisible()
-
-  const doraCard = members.locator(".card").filter({hasText: "Dora Deckhand"})
-
-  await doraCard.getByRole("button").last().click()
-  await admin.getByRole("button", {name: "Remove Member"}).click()
-  await admin.getByRole("button", {name: "Confirm"}).click()
-
-  await expect(admin.getByText("Member has successfully been removed!")).toBeVisible()
-  await expect(members.getByText("Dora Deckhand")).toHaveCount(0)
-
-  const bob = await as(users.bob, roomPath(url, "general"))
-
-  await openRoomDetail(bob)
-  await bob.getByRole("button", {name: "View All"}).click()
-
-  await expect(dialog(bob, "Members").getByText("Bob Barnacle")).toBeVisible()
-  await expect(bob.getByRole("button", {name: "Add members"})).toHaveCount(0)
+  await expect(admin.getByRole("button", {name: "Add members"})).toHaveCount(0)
 })
 
 test("US-023 reply to a message", async ({seed, as}) => {

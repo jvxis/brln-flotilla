@@ -381,6 +381,10 @@ Jaime also noticed that the newest message sat flush against the box to write in
 
 The same pass at phone size found the first chat opened greeting the member with a red "Failed to request notification permissions (denied)": the chat asks for notifications on its own the first time a conversation opens, and a member who says no, or whose browser has none (Safari on an iPhone outside the installed app), had not asked for anything. The refusal is now silent there; turning push on in the settings still says why it failed. `WebNotifications.request` also checks `typeof Notification` first, since naming the missing global threw rather than reading as undefined. e2e: "opening the first chat with notifications refused shows no error" fails without the change and passes with it.
 
+### 42. Rooms offer no way to bring people in
+
+Asked by Jaime on 09/11/2026. Membership of the club comes from the Services, never from a link or an admin. The room details lose "Create invite" and the members list loses "Add members": adding someone who was not in the space went on to let them into the whole relay ("is not a member of this space. Add them?"). The relay already refuses a room join from anyone who is not a member, and only its owner can create relay invite codes; this removes the doors from the chat as well. Removing a member stays. `US-022` now asserts both options are absent.
+
 ## Updating from upstream
 
 ```sh
