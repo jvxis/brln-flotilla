@@ -437,3 +437,28 @@ test("US-008 delete your nostr account", async ({seed, as, visit}) => {
   // than settling on its empty state. What the story is about is that nothing of hers comes back.
   await expect(bob.locator(".card.card-interactive")).toHaveCount(0)
 })
+
+// On 10/11/2026 Jaime's iPhone showed the profile's npub field running off the right edge, copy
+// button and all: the field's flex wrapper had no min-w-0, so it never shrank below the input.
+test("the profile's public key fits a phone's screen", async ({seed, as}) => {
+  await seed(({relay, user}) => {
+    const space = relay("space")
+
+    space.room("general", {name: "General"})
+    space.join(user.alice, "general")
+  })
+
+  const width = 390
+  const page = await as(users.alice, "/settings/profile", {
+    context: {viewport: {width, height: 844}, hasTouch: true},
+  })
+  const field = page.locator("label.input").filter({has: npubField(page)})
+
+  await expect(npubField(page)).toHaveValue(npubEncode(users.alice.pubkey))
+
+  const box = await field.boundingBox()
+  const copy = await field.getByRole("button").boundingBox()
+
+  expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+  expect(copy!.x + copy!.width).toBeLessThanOrEqual(width)
+})

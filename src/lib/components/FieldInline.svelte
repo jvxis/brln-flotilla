@@ -16,7 +16,9 @@
         {@render props.label()}
       </label>
     {/if}
-    <div class="flex items-center gap-2 justify-end grow">
+    <!-- min-w-0: without it a flex item never shrinks below its content, and on a phone the
+         profile's npub field pushed its copy button off the screen (Jaime, 10/11/2026). -->
+    <div class="flex min-w-0 items-center gap-2 justify-end grow">
       {#if props.input}
         {@render props.input()}
       {/if}

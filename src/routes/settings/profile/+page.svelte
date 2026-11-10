@@ -138,8 +138,8 @@
         </p>
       {/snippet}
       {#snippet input()}
-        <label class="input flex w-full items-center justify-between gap-2">
-          <div class="flex gap-2 grow items-center">
+        <label class="input flex w-full min-w-0 items-center justify-between gap-2">
+          <div class="flex min-w-0 gap-2 grow items-center">
             <Icon icon={LinkRound} />
             <input readonly class="truncate min-w-0 grow" value={npub} />
           </div>

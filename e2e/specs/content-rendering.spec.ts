@@ -615,3 +615,34 @@ test("the newest message keeps a gap above the composer", async ({seed, as}) => 
 
   expect(await gap(room, `[data-event="${posted.id}"]`)).toBeGreaterThanOrEqual(8)
 })
+
+// On 10/11/2026 Redin deleted a message that two replies in the Suporte room quoted, and both
+// replies sat on "Loading event..." for good. Past the deadline a quote that nothing answers
+// says so; the deadline is shortened here so the test does not wait the real ten seconds.
+test("a quote of a message that is gone says so instead of loading forever", async ({seed, as}) => {
+  let unresolvable!: Seeded
+
+  const scenario = await seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    space.room("general", {name: "General"})
+    space.join(user.alice, "general")
+    space.join(user.bob, "general")
+
+    unresolvable = space.message(
+      user.bob,
+      "general",
+      `nostr:${neventEncode({id: UNKNOWN_EVENT_ID, relays: [space.url]})}\n\nreplying to this`,
+      at(10, MINUTE),
+    )
+  })
+
+  const page = await as(users.alice, roomPath(scenario.space("space").url, "general"), {
+    env: {VITE_TEST_QUOTE_DEADLINE: "1500"},
+  })
+  const message = page.locator(`[data-event="${unresolvable.id}"]`)
+
+  await expect(message).toContainText("replying to this")
+  await expect(message.getByText("Message deleted or unavailable")).toBeVisible()
+  await expect(message.getByText("Loading event...")).toHaveCount(0)
+})

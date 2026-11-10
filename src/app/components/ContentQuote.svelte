@@ -21,6 +21,7 @@
   import {deriveEvent} from "@app/repository"
   import {entityLink} from "@app/env"
   import {goToEvent} from "@app/routes"
+  import {QUOTE_DEADLINE, QUOTE_UNAVAILABLE} from "@app/quoteDeadline"
 
   type Props = {
     value: any
@@ -40,6 +41,14 @@
   const mergedRelays = writable(hints)
 
   const quote = deriveEvent(idOrAddress, hints)
+
+  let gaveUp = $state(false)
+
+  $effect(() => {
+    const timer = setTimeout(() => (gaveUp = true), QUOTE_DEADLINE)
+
+    return () => clearTimeout(timer)
+  })
 
   // Start with the hints we were handed, then widen to everything the router can work out:
   // where the quoted event has been seen, its author's outbox, and — since whoever quoted it
@@ -100,6 +109,10 @@
         <NoteContentMinimal {url} event={$quote} />
       </NoteCard>
     {/if}
+  {:else if gaveUp}
+    <div class="rounded-2xl p-4 text-sm italic opacity-70" data-quote-unavailable>
+      {QUOTE_UNAVAILABLE}
+    </div>
   {:else}
     <div class="rounded-2xl p-4">
       <Spinner loading>Loading event...</Spinner>
