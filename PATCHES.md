@@ -385,6 +385,14 @@ The same pass at phone size found the first chat opened greeting the member with
 
 Asked by Jaime on 09/11/2026. Membership of the club comes from the Services, never from a link or an admin. The room details lose "Create invite" and the members list loses "Add members": adding someone who was not in the space went on to let them into the whole relay ("is not a member of this space. Add them?"). The relay already refuses a room join from anyone who is not a member, and only its owner can create relay invite codes; this removes the doors from the chat as well. Removing a member stays. `US-022` now asserts both options are absent.
 
+### 43. A quote of a deleted message stops loading forever, and the profile's npub fits a phone
+
+On 10/11/2026 Redin deleted (NIP-09) a message that two replies in the Suporte room quoted. Every relay of the club dropped it, and both replies showed "Loading event..." for good, which on Jaime's phone read as the chat being slow. `ContentQuote` and `PinContentEvent` now wait `QUOTE_DEADLINE` (`src/app/quoteDeadline.ts`, 10 s) and then show "Message deleted or unavailable"; if the event does arrive later, the card replaces the line as usual. `VITE_TEST_QUOTE_DEADLINE` shortens the wait in tests (dev builds only). e2e: "a quote of a message that is gone says so instead of loading forever".
+
+The same evening Jaime's iPhone showed the profile's public key field running off the right edge, copy button and all. `FieldInline`'s input wrapper had no `min-w-0`, so as a flex item it never shrank below the input's natural width; it now has one, and so do the npub field's own label and wrapper. e2e: "the profile's public key fits a phone's screen" (390 px).
+
+`US-007` fails on saving the profile ("no relay accepted it") before and after this change; unrelated.
+
 ## Updating from upstream
 
 ```sh
