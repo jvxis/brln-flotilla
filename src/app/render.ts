@@ -2,17 +2,20 @@ import {ParsedType, parse, renderAsText, summarize} from "@welshman/content"
 import type {Parsed, SummaryName} from "@welshman/content"
 import type {TrustedEvent} from "@welshman/util"
 import {profiles} from "@app/core"
+import {unlinkGluedWords} from "@app/gluedLinks"
 
 // BR⚡LN: text pasted on Windows ends its lines in "\r\n", and renderAsHtml turns the "\r" into a
 // <br> of its own, so every line break of the message showed twice (Jaime, 18/10/2026: a pasted
 // announcement came out with double spacing until it was edited, since editing drops the "\r").
 // The composer no longer keeps it (src/app/editor/index.ts); this is for what is already stored
-// and what other clients send.
+// and what other clients send. A file name after a "/" is not a link either (src/app/gluedLinks.ts).
 export const parseEvent = (event: Parameters<typeof parse>[0]) =>
-  parse(
-    event.content?.includes("\r")
-      ? {...event, content: event.content.replace(/\r\n?/g, "\n")}
-      : event,
+  unlinkGluedWords(
+    parse(
+      event.content?.includes("\r")
+        ? {...event, content: event.content.replace(/\r\n?/g, "\n")}
+        : event,
+    ),
   )
 
 const summaryName: SummaryName = parsed =>

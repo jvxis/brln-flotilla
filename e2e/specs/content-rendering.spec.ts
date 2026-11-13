@@ -646,3 +646,38 @@ test("a quote of a message that is gone says so instead of loading forever", asy
   await expect(message.getByText("Message deleted or unavailable")).toBeVisible()
   await expect(message.getByText("Loading event...")).toHaveCount(0)
 })
+
+// 12/11/2026: a member pasted commands in a direct message and each file name after a "/" became a
+// link (`tls.cert` reads as a domain), whose icon and space then came along when the command was
+// copied into a terminal: `/data/lnd/ tls.cert`. A link with its scheme still is one.
+test("a file name after a slash stays text and copies without a space", async ({seed, as}) => {
+  const command = "openssl x509 -in /data/lnd/tls.cert && xxd -p $A/lnbits.macaroon"
+
+  let pasted!: Seeded
+
+  await seed(({relay, user, at}) => {
+    const space = relay("space")
+
+    space.room("general", {name: "General"})
+    space.join(user.alice, "general")
+    space.join(user.bob, "general")
+    space.relayList(user.alice)
+    space.relayList(user.bob)
+    space.messagingRelayList(user.alice)
+    space.messagingRelayList(user.bob)
+    pasted = space.dm(
+      user.bob,
+      [user.alice],
+      `${command}\nguia em https://example.test/guias`,
+      at(10, MINUTE),
+    )
+  })
+
+  const chat = await as(users.alice, chatPath(users.bob.pubkey))
+  const message = chat.locator(`[data-event="${pasted.id}"] .chat-bubble`)
+
+  await expect(message).toContainText(command)
+  await expect(message.getByRole("link", {name: "example.test/guias"})).toBeVisible()
+  await expect(message.getByRole("link", {name: "tls.cert"})).toHaveCount(0)
+  await expect(message.getByRole("link", {name: "lnbits.macaroon"})).toHaveCount(0)
+})

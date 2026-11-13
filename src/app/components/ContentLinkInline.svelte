@@ -23,8 +23,7 @@
     href={url}
     class="link-content whitespace-nowrap"
     onclick={stopPropagation(preventDefault(expand))}>
-    <Icon icon={LinkRound} size={3} class="inline-block" />
-    {displayUrl(url)}
+    <Icon icon={LinkRound} size={3} class="mr-1 inline-block" />{displayUrl(url)}
   </a>
 {:else}
   <ContentLinkUrl {url} class="link-content whitespace-nowrap" />

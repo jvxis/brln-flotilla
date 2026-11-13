@@ -54,7 +54,7 @@
   {:else if relayReference}
     <span class="text-primary">{displayRelayUrl(relayReference)}</span>
   {:else}
-    <Icon icon={LinkRound} size={3} class="inline-block" />
-    {displayUrl(url)}
+    <!-- No space after the icon: a copied message would carry it into the text (PATCHES 46). -->
+    <Icon icon={LinkRound} size={3} class="mr-1 inline-block" />{displayUrl(url)}
   {/if}
 </Link>
