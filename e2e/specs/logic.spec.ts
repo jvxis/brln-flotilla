@@ -18,12 +18,15 @@ const rendered = (content: string) => {
 }
 
 test.describe("a file name after a slash is not a link (jvxis/brln-flotilla#4)", () => {
-  // What a member pasted on 12/11/2026; each one copied into a terminal with a space after the "/".
+  // Commands with the file names a member pasted on 13/11/2026, and the line the issue reproduces
+  // it with. Each one copied into a terminal with a space after the "/".
   for (const content of [
     "openssl x509 -in /data/lnd/tls.cert -noout -text",
     'curl --cacert /data/lnd/tls.cert -H "X-Api-Key: $(xxd -p $A/lnbits.macaroon)"',
+    "lncli --macaroonpath $A/lnbits.macaroon getinfo",
     "tar -xzf /home/admin/lnbits-redin.tar.gz -C /var/lib/lightningos/apps-data/lnbits/lnd",
     "ls ~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon",
+    `sudo bash -c 'for f in /data/lnd/tls.cert /data/lnd/data/chain/bitcoin/mainnet/admin.macaroon; do stat -c "%n" "$f"; done'`,
   ]) {
     test(content, () => {
       expect(rendered(content)).toEqual({text: content, links: []})

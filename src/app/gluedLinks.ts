@@ -2,7 +2,7 @@ import {ParsedType, isLink, isText} from "@welshman/content"
 import type {Parsed} from "@welshman/content"
 
 // A link with no scheme is only a dotted word, and right after a "/" it is the name of a file:
-// on 12/11/2026 a member pasted, in a direct message, commands with `/data/lnd/tls.cert`,
+// on 13/11/2026 a member pasted, in a direct message, commands with `/data/lnd/tls.cert`,
 // `$A/lnbits.macaroon` and `/home/admin/lnbits-redin.tar.gz`, and each file name became a link
 // (`tls.cert` reads as a domain). The link draws its icon and then a space, so a copy into a
 // terminal came out as `/data/lnd/ tls.cert`. Welshman's parseLink means to skip "the end of a

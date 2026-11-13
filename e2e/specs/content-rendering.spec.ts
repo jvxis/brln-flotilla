@@ -647,7 +647,7 @@ test("a quote of a message that is gone says so instead of loading forever", asy
   await expect(message.getByText("Loading event...")).toHaveCount(0)
 })
 
-// 12/11/2026: a member pasted commands in a direct message and each file name after a "/" became a
+// 13/11/2026: a member pasted commands in a direct message and each file name after a "/" became a
 // link (`tls.cert` reads as a domain), whose icon and space then came along when the command was
 // copied into a terminal: `/data/lnd/ tls.cert`. A link with its scheme still is one.
 test("a file name after a slash stays text and copies without a space", async ({seed, as}) => {
