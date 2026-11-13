@@ -1,6 +1,6 @@
 <script lang="ts">
   import type {Snippet} from "svelte"
-  import {removeUndefined, sleep} from "@welshman/lib"
+  import {removeUndefined} from "@welshman/lib"
   import type {TrustedEvent} from "@welshman/util"
   import {Profiles, Zappers} from "@welshman/app"
   import Button from "@lib/components/Button.svelte"
@@ -9,6 +9,7 @@
   import type {ZapperProblem} from "@app/components/InfoZapperError.svelte"
   import {pushModal} from "@app/modal"
   import {app} from "@app/core"
+  import {lookUpZapper} from "@app/zapperLookup"
 
   type Props = {
     url?: string
@@ -22,14 +23,19 @@
 
   const {url, event, children, replaceState, ...props}: Props = $props()
 
-  // The lookup goes through a proxy and then to the recipient's Lightning service, and
-  // either can take its time. Without a bound, a click that never gets an answer left
-  // the button disabled with nothing on screen, which reads as "zap is broken".
-  const LOOKUP_TIMEOUT = 10_000
-
   const relays = removeUndefined([url])
 
-  const zapperPromise = $app.use(Zappers).loadForPubkey(event.pubkey, relays)
+  // Zappers keeps only an answer with `allowsNostr` and `nostrPubkey`, so "no zapper" is also
+  // "didn't confirm Nostr zaps". forceLoad skips the cache and the backoff of `load`.
+  const reload = async () => {
+    const profile = await $app
+      .use(Profiles)
+      .forceLoad(event.pubkey, relays)
+      .catch(() => $app.use(Profiles).get(event.pubkey))
+    const lnurl = profile?.lnurl()
+
+    return lnurl ? $app.use(Zappers).forceLoad(lnurl) : undefined
+  }
 
   const explain = (problem: ZapperProblem) =>
     pushModal(InfoZapperError, {url, pubkey: event.pubkey, problem}, {replaceState})
@@ -38,16 +44,15 @@
     loading = true
 
     try {
-      const zapper = await Promise.race([
-        zapperPromise,
-        sleep(LOOKUP_TIMEOUT).then(() => "timeout" as const),
-      ])
+      const zapper = await lookUpZapper(zapperPromise, reload)
 
       if (zapper === "timeout") {
         return explain("unreachable")
       }
 
       if (zapper?.allowsNostr) {
+        zapperPromise = Promise.resolve(zapper)
+
         return pushModal(Zap, {url, pubkey: event.pubkey, event}, {replaceState})
       }
 
@@ -65,6 +70,7 @@
     }
   }
 
+  let zapperPromise = $app.use(Zappers).loadForPubkey(event.pubkey, relays)
   let loading = $state(false)
 </script>
 
